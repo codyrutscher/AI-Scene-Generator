@@ -117,9 +117,9 @@ const Hero = () => {
             >
               <video
                 autoPlay
-                muted
                 loop
                 playsInline
+                controls
                 className="w-full h-auto rounded-2xl shadow-lg"
                 poster="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'><rect width='100%' height='100%' fill='%23111827'/><text x='50%' y='50%' text-anchor='middle' dy='.3em' fill='%236366f1' font-size='48' font-family='sans-serif'>🎮 3DAI Demo</text></svg>"
               >
