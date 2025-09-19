@@ -1,0 +1,22 @@
+{
+  "name": "3d-sketchfab-renderer",
+  "version": "1.0.0",
+  "description": "3D renderer with Sketchfab integration and natural language processing",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "keywords": ["electron", "three.js", "sketchfab", "3d"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0"
+  },
+  "dependencies": {
+    "three": "^0.156.0",
+    "axios": "^1.5.0",
+    "aframe": "^1.4.0",
+    "puppeteer": "^21.5.0"
+  }
+}

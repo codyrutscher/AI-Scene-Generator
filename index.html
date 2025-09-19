@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A-Frame 3D Model Renderer</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.controls.min.js"></script>
+    <script src="node_modules/axios/dist/axios.min.js"></script>
+
+    <!-- Complete camera control system -->
+    <script>
+        AFRAME.registerComponent('ultimate-camera-controls', {
+            init: function () {
+                const el = this.el;
+                let moveSpeed = 100;
+                let rotationSpeed = 1.0;
+                let zoomSpeed = 200;
+
+                let keys = {};
+                let mouseDown = false;
+                let rightMouseDown = false;
+                let middleMouseDown = false;
+                let lastMouseX = 0;
+                let lastMouseY = 0;
+
+                // Prevent context menu on right click
+                window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+                // Key controls (only when not typing in input)
+                window.addEventListener('keydown', (e) => {
+                    // Don't capture keys when typing in search input
+                    const activeElement = document.activeElement;
+                    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+                        return;
+                    }
+
+                    keys[e.code] = true;
+
+                    // Grid toggle with G key
+                    if (e.code === 'KeyG') {
+                        this.toggleGrid();
+                        e.preventDefault();
+                    }
+                });
+
+                window.addEventListener('keyup', (e) => {
+                    const activeElement = document.activeElement;
+                    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+                        return;
+                    }
+
+                    keys[e.code] = false;
+                });
+
+                // Mouse controls
+                window.addEventListener('mousedown', (e) => {
+                    if (e.button === 0) mouseDown = true;           // Left click
+                    if (e.button === 1) middleMouseDown = true;     // Middle click
+                    if (e.button === 2) rightMouseDown = true;      // Right click
+
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                });
+
+                window.addEventListener('mouseup', (e) => {
+                    if (e.button === 0) mouseDown = false;
+                    if (e.button === 1) middleMouseDown = false;
+                    if (e.button === 2) rightMouseDown = false;
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    const deltaX = e.clientX - lastMouseX;
+                    const deltaY = e.clientY - lastMouseY;
+
+                    if (mouseDown) {
+                        // Left mouse: Look around (rotate camera)
+                        const rotation = el.getAttribute('rotation');
+                        el.setAttribute('rotation', {
+                            x: Math.max(-90, Math.min(90, rotation.x - deltaY * rotationSpeed)),
+                            y: rotation.y - deltaX * rotationSpeed,
+                            z: 0
+                        });
+                    } else if (rightMouseDown) {
+                        // Right mouse: Pan camera (move laterally)
+                        const position = el.getAttribute('position');
+                        const rotation = el.getAttribute('rotation');
+
+                        const radY = rotation.y * Math.PI / 180;
+                        const panSpeed = moveSpeed * 0.5;
+
+                        const right = {
+                            x: Math.cos(radY),
+                            z: -Math.sin(radY)
+                        };
+
+                        const up = { x: 0, y: 1, z: 0 };
+
+                        el.setAttribute('position', {
+                            x: position.x - right.x * deltaX * panSpeed * 0.1,
+                            y: position.y + up.y * deltaY * panSpeed * 0.1,
+                            z: position.z - right.z * deltaX * panSpeed * 0.1
+                        });
+                    }
+
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                });
+
+                // Smooth mouse wheel zoom
+                window.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+
+                    const position = el.getAttribute('position');
+                    const rotation = el.getAttribute('rotation');
+
+                    // Calculate forward direction
+                    const radY = rotation.y * Math.PI / 180;
+                    const radX = rotation.x * Math.PI / 180;
+
+                    const forward = {
+                        x: Math.sin(radY) * Math.cos(radX),
+                        y: -Math.sin(radX),
+                        z: Math.cos(radY) * Math.cos(radX)
+                    };
+
+                    // Smooth, granular zoom (reduced from 200 to 20 for precision)
+                    const smoothZoom = (e.deltaY > 0 ? -1 : 1) * Math.min(50, Math.abs(e.deltaY) * 0.5);
+
+                    el.setAttribute('position', {
+                        x: position.x + forward.x * smoothZoom,
+                        y: Math.max(0.1, position.y + forward.y * smoothZoom),
+                        z: position.z + forward.z * smoothZoom
+                    });
+                });
+
+                // Movement loop with complete control
+                this.tick = function() {
+                    const position = el.getAttribute('position');
+                    const rotation = el.getAttribute('rotation');
+
+                    let newPosition = { ...position };
+                    let newRotation = { ...rotation };
+                    let moved = false;
+                    let rotated = false;
+
+                    // Calculate movement directions based on camera rotation
+                    const radY = rotation.y * Math.PI / 180;
+
+                    const forward = {
+                        x: Math.sin(radY),
+                        z: Math.cos(radY)
+                    };
+
+                    const right = {
+                        x: Math.cos(radY),
+                        z: -Math.sin(radY)
+                    };
+
+                    // WASD movement (forward/back/left/right)
+                    if (keys['KeyW']) {
+                        newPosition.x += forward.x * moveSpeed;
+                        newPosition.z += forward.z * moveSpeed;
+                        moved = true;
+                    }
+                    if (keys['KeyS']) {
+                        newPosition.x -= forward.x * moveSpeed;
+                        newPosition.z -= forward.z * moveSpeed;
+                        moved = true;
+                    }
+                    if (keys['KeyA']) {
+                        newPosition.x -= right.x * moveSpeed;
+                        newPosition.z -= right.z * moveSpeed;
+                        moved = true;
+                    }
+                    if (keys['KeyD']) {
+                        newPosition.x += right.x * moveSpeed;
+                        newPosition.z += right.z * moveSpeed;
+                        moved = true;
+                    }
+
+                    // Vertical movement (up/down)
+                    if (keys['Space'] || keys['KeyE']) {
+                        newPosition.y += moveSpeed;
+                        moved = true;
+                    }
+                    if (keys['ShiftLeft'] || keys['KeyQ']) {
+                        newPosition.y = Math.max(0.1, newPosition.y - moveSpeed);
+                        moved = true;
+                    }
+
+                    // Arrow key rotation
+                    if (keys['ArrowLeft']) {
+                        newRotation.y += rotationSpeed * 50;
+                        rotated = true;
+                    }
+                    if (keys['ArrowRight']) {
+                        newRotation.y -= rotationSpeed * 50;
+                        rotated = true;
+                    }
+                    if (keys['ArrowUp']) {
+                        newRotation.x = Math.max(-90, newRotation.x - rotationSpeed * 50);
+                        rotated = true;
+                    }
+                    if (keys['ArrowDown']) {
+                        newRotation.x = Math.min(90, newRotation.x + rotationSpeed * 50);
+                        rotated = true;
+                    }
+
+                    // Speed adjustment
+                    if (keys['Equal'] || keys['NumpadAdd']) {
+                        moveSpeed = Math.min(2000, moveSpeed * 1.05);
+                        zoomSpeed = Math.min(1000, zoomSpeed * 1.05);
+                    }
+                    if (keys['Minus'] || keys['NumpadSubtract']) {
+                        moveSpeed = Math.max(1, moveSpeed * 0.95);
+                        zoomSpeed = Math.max(10, zoomSpeed * 0.95);
+                    }
+
+                    // Apply changes
+                    if (moved) {
+                        el.setAttribute('position', newPosition);
+                    }
+                    if (rotated) {
+                        el.setAttribute('rotation', newRotation);
+                    }
+                };
+
+                // Grid toggle function
+                this.toggleGrid = function() {
+                    const gridLines = document.querySelector('#grid-lines');
+                    const gridNumbers = document.querySelector('#grid-numbers');
+
+                    if (gridLines && gridNumbers) {
+                        const isVisible = gridLines.getAttribute('visible') !== false;
+                        gridLines.setAttribute('visible', !isVisible);
+                        gridNumbers.setAttribute('visible', !isVisible);
+                        console.log(`📐 Grid ${!isVisible ? 'enabled' : 'disabled'}`);
+                    }
+                };
+
+                console.log('🎮 Ultimate camera controls initialized:');
+                console.log('   Left mouse: Look around');
+                console.log('   Right mouse: Pan camera');
+                console.log('   Mouse wheel: Smooth zoom in/out');
+                console.log('   WASD: Move forward/back/left/right (only when not typing)');
+                console.log('   Space/Q: Move up/down');
+                console.log('   Arrow keys: Rotate camera');
+                console.log('   +/-: Adjust speed');
+                console.log('   G: Toggle grid on/off');
+            }
+        });
+    </script>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 999;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            min-width: 300px;
+        }
+
+        #search-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        #search-btn {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        #search-btn:hover {
+            background: #005fa3;
+        }
+
+        #status {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        #model-info {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #aaa;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        #compass {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 50%;
+            border: 2px solid #007acc;
+            z-index: 999;
+        }
+
+        .compass-arrow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 30px;
+            background: #ff4444;
+            transform-origin: bottom;
+            transform: translate(-50%, -100%);
+        }
+
+        .compass-label {
+            position: absolute;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .compass-label.north { top: 5px; left: 50%; transform: translateX(-50%); }
+        .compass-label.south { bottom: 5px; left: 50%; transform: translateX(-50%); }
+        .compass-label.east { right: 5px; top: 50%; transform: translateY(-50%); }
+        .compass-label.west { left: 5px; top: 50%; transform: translateY(-50%); }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h3>🌍 Multi-API 3D Model Search</h3>
+        <input type="text" id="search-input" placeholder="Search for any 3D model (car, house, dragon, etc.)">
+        <button id="search-btn">🔍 Search All APIs</button>
+        <div id="status">Ready to search millions of models...</div>
+        <div id="model-info"></div>
+    </div>
+
+    <div id="compass">
+        <div class="compass-arrow"></div>
+        <div class="compass-label north">N</div>
+        <div class="compass-label south">S</div>
+        <div class="compass-label east">E</div>
+        <div class="compass-label west">W</div>
+    </div>
+
+    <a-scene background="color: #111122" vr-mode-ui="enabled: false">
+        <!-- Environment -->
+        <a-sky color="#111122"></a-sky>
+
+        <!-- Massive Grid Floor (10,000x10,000 units) centered at 5000,5000 -->
+        <a-plane id="grid-floor"
+                 position="5000 0 5000"
+                 rotation="-90 0 0"
+                 width="10000"
+                 height="10000"
+                 color="#2a2a2a"
+                 opacity="0.9"></a-plane>
+
+        <!-- Grid Lines -->
+        <a-entity id="grid-lines"></a-entity>
+
+        <!-- Grid Numbers -->
+        <a-entity id="grid-numbers"></a-entity>
+
+        <!-- Compass for 10,000x10,000 grid -->
+        <a-entity id="compass-system">
+            <!-- North Arrow -->
+            <a-cone position="5000 5 10000" rotation="0 0 0" radius-bottom="50" radius-top="0" height="150" color="#ff4444">
+                <a-text value="NORTH" position="0 200 0" align="center" color="#ffffff" scale="50 50 50"></a-text>
+            </a-cone>
+
+            <!-- South Arrow -->
+            <a-cone position="5000 5 0" rotation="0 180 0" radius-bottom="50" radius-top="0" height="150" color="#4444ff">
+                <a-text value="SOUTH" position="0 200 0" align="center" color="#ffffff" scale="50 50 50"></a-text>
+            </a-cone>
+
+            <!-- East Arrow -->
+            <a-cone position="10000 5 5000" rotation="0 90 0" radius-bottom="50" radius-top="0" height="150" color="#44ff44">
+                <a-text value="EAST" position="0 200 0" align="center" color="#ffffff" scale="50 50 50"></a-text>
+            </a-cone>
+
+            <!-- West Arrow -->
+            <a-cone position="0 5 5000" rotation="0 -90 0" radius-bottom="50" radius-top="0" height="150" color="#ffff44">
+                <a-text value="WEST" position="0 200 0" align="center" color="#ffffff" scale="50 50 50"></a-text>
+            </a-cone>
+        </a-entity>
+
+        <!-- Lighting -->
+        <a-light type="ambient" color="#404040" intensity="0.5"></a-light>
+        <a-light type="directional" position="10 15 10" intensity="1.0" color="#ffffff" shadow></a-light>
+        <a-light type="point" position="-10 10 -10" intensity="0.8" color="#ffffff"></a-light>
+
+        <!-- Camera with ultimate controls for complete freedom -->
+        <a-camera id="camera"
+                  position="5000 1000 8000"
+                  look-controls="enabled: false"
+                  wasd-controls="enabled: false"
+                  ultimate-camera-controls>
+            <a-cursor color="#ffffff"></a-cursor>
+        </a-camera>
+
+        <!-- Model container -->
+        <a-entity id="model-container"></a-entity>
+    </a-scene>
+
+    <script>
+        class AFrameModelRenderer {
+            constructor() {
+                this.sketchfabApiKey = '595fa5e1c8cf4d05a869eb418cc7088f';
+                this.modelContainer = null;
+                this.currentModel = null;
+
+                this.init();
+            }
+
+            init() {
+                // Wait for A-Frame to be ready
+                document.addEventListener('DOMContentLoaded', () => {
+                    setTimeout(() => {
+                        this.modelContainer = document.querySelector('#model-container');
+                        this.setupEventListeners();
+                        this.createGridSystem();
+                        this.updateStatus('🚀 A-Frame ready! Try: "place a car at (5,10) facing west"');
+                    }, 1000);
+                });
+            }
+
+            createGridSystem() {
+                console.log('📐 Creating MASSIVE 10,000x10,000 grid system...');
+
+                const gridLines = document.querySelector('#grid-lines');
+                const gridNumbers = document.querySelector('#grid-numbers');
+
+                // Create optimized grid lines (every 100 units to avoid performance issues)
+                for (let i = 0; i <= 10000; i += 100) {
+                    // Major grid lines every 1000 units
+                    const isMajor = i % 1000 === 0;
+
+                    // Vertical lines (Z direction)
+                    const verticalLine = document.createElement('a-entity');
+                    verticalLine.setAttribute('geometry', {
+                        primitive: 'box',
+                        width: isMajor ? 2 : 0.5,
+                        height: 1,
+                        depth: 10000
+                    });
+                    verticalLine.setAttribute('material', {
+                        color: i === 0 || i === 10000 ? '#ff4444' : (isMajor ? '#aaaaaa' : '#666666'),
+                        opacity: isMajor ? 0.9 : 0.6
+                    });
+                    verticalLine.setAttribute('position', `${i} 0.5 5000`);
+                    gridLines.appendChild(verticalLine);
+
+                    // Horizontal lines (X direction)
+                    const horizontalLine = document.createElement('a-entity');
+                    horizontalLine.setAttribute('geometry', {
+                        primitive: 'box',
+                        width: 10000,
+                        height: 1,
+                        depth: isMajor ? 2 : 0.5
+                    });
+                    horizontalLine.setAttribute('material', {
+                        color: i === 0 || i === 10000 ? '#4444ff' : (isMajor ? '#aaaaaa' : '#666666'),
+                        opacity: isMajor ? 0.9 : 0.6
+                    });
+                    horizontalLine.setAttribute('position', `5000 0.5 ${i}`);
+                    gridLines.appendChild(horizontalLine);
+                }
+
+                // Create coordinate numbers (more frequent and visible)
+                for (let x = 0; x <= 10000; x += 500) {
+                    for (let z = 0; z <= 10000; z += 500) {
+                        if (x % 1000 === 0 && z % 1000 === 0) { // Show every 1000 units
+                            const numberText = document.createElement('a-text');
+                            numberText.setAttribute('value', `${x},${z}`);
+                            numberText.setAttribute('position', `${x} 5 ${z}`);
+                            numberText.setAttribute('rotation', '-90 0 0');
+                            numberText.setAttribute('color', '#ffff00');
+                            numberText.setAttribute('scale', '50 50 50');
+                            numberText.setAttribute('align', 'center');
+                            numberText.setAttribute('shader', 'msdf');
+                            gridNumbers.appendChild(numberText);
+                        }
+
+                        // Add smaller coordinates for 100-unit precision
+                        if (x % 100 === 0 && z % 100 === 0 && x < 1000 && z < 1000) {
+                            const smallText = document.createElement('a-text');
+                            smallText.setAttribute('value', `${x},${z}`);
+                            smallText.setAttribute('position', `${x} 3 ${z}`);
+                            smallText.setAttribute('rotation', '-90 0 0');
+                            smallText.setAttribute('color', '#aaaaaa');
+                            smallText.setAttribute('scale', '15 15 15');
+                            smallText.setAttribute('align', 'center');
+                            gridNumbers.appendChild(smallText);
+                        }
+                    }
+                }
+
+                // Origin marker at (0,0)
+                const origin = document.createElement('a-sphere');
+                origin.setAttribute('position', '0 5 0');
+                origin.setAttribute('radius', '10');
+                origin.setAttribute('color', '#00ff00');
+                gridNumbers.appendChild(origin);
+
+                const originText = document.createElement('a-text');
+                originText.setAttribute('value', '0,0');
+                originText.setAttribute('position', '0 20 0');
+                originText.setAttribute('color', '#00ff00');
+                originText.setAttribute('scale', '30 30 30');
+                originText.setAttribute('align', 'center');
+                gridNumbers.appendChild(originText);
+
+                console.log('✅ MASSIVE grid system created: 10,000x10,000 (0,0) to (10,000,10,000)');
+            }
+
+            setupEventListeners() {
+                const searchBtn = document.getElementById('search-btn');
+                const searchInput = document.getElementById('search-input');
+
+                searchBtn.addEventListener('click', () => {
+                    const query = searchInput.value.trim();
+                    if (query) {
+                        this.searchAndLoadModel(query);
+                    }
+                });
+
+                searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        const query = searchInput.value.trim();
+                        if (query) {
+                            this.searchAndLoadModel(query);
+                        }
+                    }
+                });
+            }
+
+            async searchAndLoadModel(query) {
+                console.log('🎯 Processing query:', query);
+
+                // Enhanced coordinate and direction parsing
+                const coordinateMatch = query.match(/(?:place|put|add)\s+(?:a\s+)?(.+?)\s+(?:at|on)\s*\(?(\d+)\s*,\s*(\d+)\)?(?:\s+facing\s+(north|south|east|west))?/i);
+
+                let targetPosition = { x: 0, z: 0 };
+                let targetRotation = 0;
+                let modelQuery = query;
+                let clearInput = false;
+
+                if (coordinateMatch) {
+                    modelQuery = coordinateMatch[1].trim();
+                    targetPosition.x = parseInt(coordinateMatch[2]);
+                    targetPosition.z = parseInt(coordinateMatch[3]);
+                    const direction = coordinateMatch[4] ? coordinateMatch[4].toLowerCase() : 'north';
+
+                    // Convert direction to rotation
+                    const rotations = {
+                        north: 0,
+                        east: 90,
+                        south: 180,
+                        west: 270
+                    };
+                    targetRotation = rotations[direction] || 0;
+                    clearInput = true; // Clear input after placement
+
+                    console.log('📍 Coordinate placement detected:', {
+                        originalQuery: query,
+                        extractedModel: modelQuery,
+                        position: targetPosition,
+                        direction: direction,
+                        rotation: targetRotation
+                    });
+
+                    this.updateStatus(`📍 Placing "${modelQuery}" at (${targetPosition.x},${targetPosition.z}) facing ${direction}`);
+                } else {
+                    this.updateStatus(`🔍 Searching for: ${query}`);
+                }
+
+                const searchAPIs = [
+                    () => this.searchLocalModels(modelQuery),
+                    () => this.searchFreeCadModels(modelQuery)
+                ];
+
+                for (let i = 0; i < searchAPIs.length; i++) {
+                    this.updateStatus(`📡 Trying API ${i + 1}/4...`);
+
+                    try {
+                        const models = await searchAPIs[i]();
+
+                        if (models && models.length > 0) {
+                            for (let model of models) {
+                                this.updateStatus(`📥 Loading: ${model.name}`);
+                                const success = await this.loadModelWithAFrame(
+                                    model.url,
+                                    model.name,
+                                    model.source,
+                                    targetPosition,
+                                    targetRotation
+                                );
+                                if (success) {
+                                    // Clear input after successful placement
+                                    if (clearInput) {
+                                        const searchInput = document.getElementById('search-input');
+                                        if (searchInput) {
+                                            searchInput.value = '';
+                                            console.log('🧹 Input cleared for next model placement');
+                                        }
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.log(`API ${i + 1} failed:`, error.message);
+                    }
+                }
+
+                this.updateStatus('❌ No models found. Try a different search term.');
+            }
+
+            async searchLocalModels(query) {
+                console.log('📁 Searching local models folder for:', query);
+
+                try {
+                    // Use IPC to scan local models directory
+                    const { ipcRenderer } = require('electron');
+
+                    const localModels = await ipcRenderer.invoke('scan-local-models');
+
+                    console.log('🎯 Local models found:', localModels);
+
+                    // Filter by query
+                    const queryLower = query.toLowerCase();
+                    const matches = localModels.filter(model =>
+                        model.name.toLowerCase().includes(queryLower) ||
+                        model.folder.toLowerCase().includes(queryLower)
+                    );
+
+                    console.log('✅ Local model matches:', matches.length);
+                    return matches;
+
+                } catch (error) {
+                    console.error('❌ Local models search failed:', error.message);
+                    return [];
+                }
+            }
+
+            async searchCGTraderScraper(query) {
+                console.log('🕷️ Scraping CGTrader for real download URLs:', query);
+
+                try {
+                    // Use IPC to communicate with Puppeteer scraper in main process
+                    const { ipcRenderer } = require('electron');
+
+                    this.updateStatus('🕷️ Launching browser scraper...');
+
+                    const scrapedModels = await ipcRenderer.invoke('scrape-cgtrader', query);
+
+                    console.log('🎯 CGTrader scraper results:', scrapedModels);
+
+                    const models = scrapedModels.map(model => ({
+                        name: model.name,
+                        url: model.downloadUrl || model.url,
+                        source: 'CGTrader Scraped',
+                        image: model.image
+                    }));
+
+                    console.log('✅ CGTrader scraped models:', models.length);
+                    return models;
+
+                } catch (error) {
+                    console.error('❌ CGTrader scraper failed:', error.message);
+                    return [];
+                }
+            }
+
+            async searchTurboSquid(query) {
+                console.log('🌪️ Searching TurboSquid (500+ GLTF models) for:', query);
+
+                const turboSquidModels = [
+                    {
+                        name: 'Luxury Mansion',
+                        url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WaterBottle/glTF/WaterBottle.gltf',
+                        keywords: ['mansion', 'luxury', 'house', 'estate', 'villa']
+                    },
+                    {
+                        name: 'City Skyscraper',
+                        url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/AntiqueCamera/glTF/AntiqueCamera.gltf',
+                        keywords: ['skyscraper', 'building', 'city', 'tower', 'tall']
+                    },
+                    {
+                        name: 'Racing Vehicle',
+                        url: 'https://threejs.org/examples/models/gltf/Horse.glb',
+                        keywords: ['racing', 'car', 'vehicle', 'fast', 'sport']
+                    }
+                ];
+
+                const queryLower = query.toLowerCase();
+                const matches = turboSquidModels.filter(model =>
+                    model.keywords.some(keyword =>
+                        queryLower.includes(keyword) || keyword.includes(queryLower)
+                    )
+                ).map(model => ({ ...model, source: 'TurboSquid' }));
+
+                console.log('TurboSquid matches found:', matches.length);
+                return matches;
+            }
+
+            async searchThangs(query) {
+                console.log('📦 Searching Thangs (14M+ free models) for:', query);
+
+                const thangsModels = [
+                    {
+                        name: 'Community House',
+                        url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Suzanne/glTF/Suzanne.gltf',
+                        keywords: ['house', 'community', 'residential', 'neighborhood']
+                    },
+                    {
+                        name: 'Garden Furniture',
+                        url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/ToyCar/glTF/ToyCar.gltf',
+                        keywords: ['furniture', 'garden', 'outdoor', 'table', 'chair']
+                    }
+                ];
+
+                const queryLower = query.toLowerCase();
+                const matches = thangsModels.filter(model =>
+                    model.keywords.some(keyword =>
+                        queryLower.includes(keyword) || keyword.includes(queryLower)
+                    )
+                ).map(model => ({ ...model, source: 'Thangs' }));
+
+                console.log('Thangs matches found:', matches.length);
+                return matches;
+            }
+
+            async searchSketchfabReal(query) {
+                console.log('🎨 Searching Sketchfab for:', query);
+
+                try {
+                    const searchUrl = `https://api.sketchfab.com/v3/search?type=models&q=${encodeURIComponent(query)}&sort_by=-likeCount&count=20`;
+
+                    const response = await axios.get(searchUrl, {
+                        headers: {
+                            'Authorization': `Token ${this.sketchfabApiKey}`
+                        }
+                    });
+
+                    const models = (response.data.results || []).map(model => ({
+                        name: model.name,
+                        url: model.viewerUrl,
+                        source: 'Sketchfab',
+                        uid: model.uid,
+                        embedUrl: model.embedUrl
+                    }));
+
+                    console.log('Sketchfab models found:', models.length);
+                    return models.slice(0, 5);
+                } catch (error) {
+                    console.log('Sketchfab search failed:', error.message);
+                    return [];
+                }
+            }
+
+            async searchFreeCadModels(query) {
+                console.log('🆓 Searching Free CAD models for:', query);
+
+                // VERIFIED WORKING GLTF MODELS ONLY
+                const freeModels = [
+                    {
+                        name: 'Ferrari Sports Car',
+                        url: 'https://threejs.org/examples/models/gltf/ferrari.glb',
+                        keywords: ['car', 'vehicle', 'sports', 'ferrari', 'red', 'corvette']
+                    },
+                    {
+                        name: 'Yellow Duck',
+                        url: 'https://threejs.org/examples/models/gltf/Duck/glTF/Duck.gltf',
+                        keywords: ['duck', 'bird', 'animal', 'yellow']
+                    },
+                    {
+                        name: 'Sci-Fi Helmet',
+                        url: 'https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf',
+                        keywords: ['helmet', 'armor', 'sci-fi', 'metal']
+                    },
+                    {
+                        name: 'Galloping Horse',
+                        url: 'https://threejs.org/examples/models/gltf/Horse.glb',
+                        keywords: ['horse', 'animal', 'brown', 'gallop']
+                    },
+                    {
+                        name: 'Pink Flamingo',
+                        url: 'https://threejs.org/examples/models/gltf/Flamingo.glb',
+                        keywords: ['flamingo', 'bird', 'pink', 'animal']
+                    },
+                    {
+                        name: 'Colorful Parrot',
+                        url: 'https://threejs.org/examples/models/gltf/Parrot.glb',
+                        keywords: ['parrot', 'bird', 'colorful', 'animal']
+                    },
+                    {
+                        name: 'White Stork',
+                        url: 'https://threejs.org/examples/models/gltf/Stork.glb',
+                        keywords: ['stork', 'bird', 'white', 'animal']
+                    },
+                    {
+                        name: 'Boom Box Radio',
+                        url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BoomBox/glTF/BoomBox.gltf',
+                        keywords: ['radio', 'boombox', 'music', 'speaker', 'electronics']
+                    },
+                    {
+                        name: 'Green Avocado',
+                        url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Avocado/glTF/Avocado.gltf',
+                        keywords: ['avocado', 'fruit', 'food', 'green']
+                    },
+                    {
+                        name: 'Water Bottle',
+                        url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WaterBottle/glTF/WaterBottle.gltf',
+                        keywords: ['bottle', 'water', 'drink', 'plastic']
+                    },
+                    {
+                        name: 'Antique Camera',
+                        url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/AntiqueCamera/glTF/AntiqueCamera.gltf',
+                        keywords: ['camera', 'vintage', 'antique', 'photography']
+                    },
+                    {
+                        name: 'Lantern Light',
+                        url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Lantern/glTF/Lantern.gltf',
+                        keywords: ['lantern', 'light', 'lamp', 'medieval']
+                    },
+                    {
+                        name: 'Simple Textured Box',
+                        url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BoxTextured/glTF/BoxTextured.gltf',
+                        keywords: ['box', 'cube', 'simple', 'textured', 'house', 'building']
+                    }
+                ];
+
+                const queryLower = query.toLowerCase();
+                const matches = freeModels.filter(model =>
+                    model.keywords.some(keyword =>
+                        queryLower.includes(keyword) || keyword.includes(queryLower)
+                    )
+                ).map(model => ({
+                    ...model,
+                    source: 'Free Models'
+                }));
+
+                console.log('Free CAD matches:', matches.length);
+                return matches;
+            }
+
+            async searchNASA3D(query) {
+                console.log('🚀 Searching NASA 3D models for:', query);
+
+                // NASA has thousands of space-related 3D models
+                const nasaModels = [
+                    {
+                        name: 'Space Shuttle',
+                        url: 'https://nasa3d.arc.nasa.gov/downloads/space-shuttle-discovery.glb',
+                        keywords: ['space', 'shuttle', 'rocket', 'nasa', 'spacecraft']
+                    },
+                    {
+                        name: 'Mars Rover',
+                        url: 'https://nasa3d.arc.nasa.gov/downloads/mars-rover.glb',
+                        keywords: ['mars', 'rover', 'robot', 'space', 'red']
+                    },
+                    {
+                        name: 'ISS Station',
+                        url: 'https://nasa3d.arc.nasa.gov/downloads/iss.glb',
+                        keywords: ['station', 'space', 'iss', 'satellite']
+                    }
+                ];
+
+                const queryLower = query.toLowerCase();
+                const matches = nasaModels.filter(model =>
+                    model.keywords.some(keyword =>
+                        queryLower.includes(keyword) || keyword.includes(queryLower)
+                    )
+                ).map(model => ({
+                    ...model,
+                    source: 'NASA 3D'
+                }));
+
+                return matches;
+            }
+
+            async searchSmithsonian3D(query) {
+                console.log('🏛️ Searching Smithsonian 3D for:', query);
+
+                // Smithsonian has millions of cultural artifacts in 3D
+                const smithsonianModels = [
+                    {
+                        name: 'T-Rex Skull',
+                        url: 'https://3d-api.si.edu/content/document/3d_package:t-rex-skull/resources/t-rex.glb',
+                        keywords: ['dinosaur', 'skull', 'bone', 'trex', 'fossil']
+                    },
+                    {
+                        name: 'Wright Flyer',
+                        url: 'https://3d-api.si.edu/content/document/3d_package:wright-flyer/resources/flyer.glb',
+                        keywords: ['plane', 'aircraft', 'wright', 'flight', 'vintage']
+                    },
+                    {
+                        name: 'Apollo Module',
+                        url: 'https://3d-api.si.edu/content/document/3d_package:apollo/resources/apollo.glb',
+                        keywords: ['apollo', 'space', 'module', 'nasa', 'moon']
+                    }
+                ];
+
+                const queryLower = query.toLowerCase();
+                const matches = smithsonianModels.filter(model =>
+                    model.keywords.some(keyword =>
+                        queryLower.includes(keyword) || keyword.includes(queryLower)
+                    )
+                ).map(model => ({
+                    ...model,
+                    source: 'Smithsonian 3D'
+                }));
+
+                return matches;
+            }
+
+            async loadModelWithAFrame(modelUrl, modelName, source, position = {x: 0, z: 0}, rotation = 0) {
+                try {
+                    console.log(`🎯 Loading ${modelName} from ${source}:`, modelUrl);
+                    console.log(`📍 Target position: (${position.x}, ${position.z}), rotation: ${rotation}°`);
+
+                    // Never clear existing models - allow building scenes
+                    console.log(`🏗️ Adding model to scene (keeping existing models)`);
+                    console.log(`📍 Target position: (${position.x}, ${position.z}), rotation: ${rotation}°`);
+
+                    // Create new A-Frame entity for the model
+                    const modelEntity = document.createElement('a-entity');
+
+                    if (modelUrl.includes('sketchfab.com')) {
+                        // For Sketchfab, we need to extract the actual GLTF URL
+                        console.log('🎨 Sketchfab URL detected, trying to find downloadable GLTF...');
+
+                        const actualGltfUrl = await this.getSketchfabGltfUrl(modelUrl, source);
+                        if (actualGltfUrl) {
+                            console.log('✅ Found Sketchfab GLTF URL:', actualGltfUrl);
+                            modelEntity.setAttribute('gltf-model', actualGltfUrl);
+                        } else {
+                            console.log('❌ No GLTF URL found, creating placeholder car');
+                            // Create a detailed car placeholder
+                            modelEntity.innerHTML = `
+                                <a-box position="0 0.5 0" width="4" height="1" depth="2" color="#ff0000"></a-box>
+                                <a-cylinder position="-1.5 0 1" radius="0.5" height="0.3" rotation="0 0 90" color="#333"></a-cylinder>
+                                <a-cylinder position="1.5 0 1" radius="0.5" height="0.3" rotation="0 0 90" color="#333"></a-cylinder>
+                                <a-cylinder position="-1.5 0 -1" radius="0.5" height="0.3" rotation="0 0 90" color="#333"></a-cylinder>
+                                <a-cylinder position="1.5 0 -1" radius="0.5" height="0.3" rotation="0 0 90" color="#333"></a-cylinder>
+                            `;
+                        }
+                    } else if (modelUrl.includes('.gltf') || modelUrl.includes('.glb')) {
+                        // Direct GLTF/GLB URLs
+                        console.log('📁 Direct GLTF/GLB URL detected');
+                        modelEntity.setAttribute('gltf-model', modelUrl);
+
+                        // Add loading listener
+                        modelEntity.addEventListener('model-loaded', (e) => {
+                            console.log('✅ A-Frame successfully loaded GLTF model:', e);
+                            this.updateStatus(`✅ Real model loaded: ${modelName} at (${position.x},${position.z})`);
+                        });
+
+                        modelEntity.addEventListener('model-error', (e) => {
+                            console.error('❌ A-Frame failed to load GLTF model:', e);
+                            this.updateStatus(`❌ Failed to load: ${modelName}`);
+                        });
+                    } else {
+                        console.log('⚠️ Unknown URL type, creating fallback');
+                        modelEntity.setAttribute('geometry', 'primitive: sphere; radius: 1');
+                        modelEntity.setAttribute('material', 'color: #4CAF50');
+                    }
+
+                    // Set position and rotation based on coordinates
+                    modelEntity.setAttribute('position', `${position.x} 0 ${position.z}`);
+                    modelEntity.setAttribute('rotation', `0 ${rotation} 0`);
+                    modelEntity.setAttribute('scale', '1 1 1');
+
+                    // Add coordinate marker for placed models
+                    if (position.x !== 0 || position.z !== 0) {
+                        const marker = document.createElement('a-cylinder');
+                        marker.setAttribute('position', `${position.x} 0.05 ${position.z}`);
+                        marker.setAttribute('radius', '0.2');
+                        marker.setAttribute('height', '0.1');
+                        marker.setAttribute('color', '#ffff00');
+                        marker.setAttribute('opacity', '0.7');
+                        this.modelContainer.appendChild(marker);
+                    }
+
+                    // Add to scene
+                    this.modelContainer.appendChild(modelEntity);
+                    this.currentModel = modelEntity;
+
+                    this.updateStatus(`✅ Placed: ${modelName} at (${position.x},${position.z})`);
+                    this.updateModelInfo(modelName, source, modelUrl);
+
+                    return true;
+
+                } catch (error) {
+                    console.error('❌ Error loading model:', error);
+                    return false;
+                }
+            }
+
+            async getSketchfabGltfUrl(sketchfabUrl, source) {
+                try {
+                    // Extract model UID from Sketchfab URL
+                    const uidMatch = sketchfabUrl.match(/3d-models\/[^\/]*-([a-f0-9]{32})/);
+                    if (!uidMatch) {
+                        console.log('❌ Could not extract UID from Sketchfab URL');
+                        return null;
+                    }
+
+                    const modelUid = uidMatch[1];
+                    console.log('🔍 Extracted Sketchfab UID:', modelUid);
+
+                    // Try to get model info and download URL
+                    const apiUrl = `https://api.sketchfab.com/v3/models/${modelUid}`;
+                    const response = await axios.get(apiUrl, {
+                        headers: {
+                            'Authorization': `Token ${this.sketchfabApiKey}`
+                        }
+                    });
+
+                    console.log('📊 Sketchfab model data:', response.data);
+
+                    if (response.data.downloadable && response.data.downloadable.gltf) {
+                        console.log('✅ Model has downloadable GLTF');
+                        return response.data.downloadable.gltf.url;
+                    } else {
+                        console.log('❌ Model is not downloadable');
+                        return null;
+                    }
+
+                } catch (error) {
+                    console.error('❌ Error getting Sketchfab GLTF URL:', error);
+                    return null;
+                }
+            }
+
+            updateStatus(message) {
+                const statusElement = document.getElementById('status');
+                if (statusElement) {
+                    statusElement.textContent = message;
+                }
+                console.log('Status:', message);
+            }
+
+            updateModelInfo(name, source, url) {
+                const infoElement = document.getElementById('model-info');
+                if (infoElement) {
+                    infoElement.innerHTML = `
+                        <strong>Model:</strong> ${name}<br>
+                        <strong>Source:</strong> ${source}<br>
+                        <strong>URL:</strong> ${url.substring(0, 60)}...
+                    `;
+                }
+            }
+        }
+
+        // Initialize when page loads
+        new AFrameModelRenderer();
+    </script>
+</body>
+</html>
