@@ -13,35 +13,56 @@
   transform: translateZ(0);
 }
 
-/* Infinite 3D Grid Background */
+/* Enhanced 3D Grid Background */
 .infinite-grid {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  perspective: 1000px;
+  perspective: 1500px;
   pointer-events: none;
   z-index: 1;
+  overflow: hidden;
 }
 
 .grid-container {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 200%;
-  height: 200%;
-  transform: translate(-50%, -50%) rotateX(75deg) translateZ(-500px);
+  width: 300%;
+  height: 300%;
+  transform: translate(-50%, -50%) rotateX(80deg) translateZ(-800px);
   background-image:
-    linear-gradient(rgba(34, 211, 238, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(168, 85, 247, 0.1) 1px, transparent 1px);
-  background-size: 50px 50px;
-  animation: grid-flow 20s linear infinite;
+    linear-gradient(rgba(34, 211, 238, 0.4) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(168, 85, 247, 0.4) 2px, transparent 2px),
+    linear-gradient(rgba(34, 211, 238, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168, 85, 247, 0.2) 1px, transparent 1px);
+  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+  animation: grid-flow 30s linear infinite;
+  border: 1px solid rgba(34, 211, 238, 0.3);
 }
 
 @keyframes grid-flow {
-  0% { transform: translate(-50%, -50%) rotateX(75deg) translateZ(-500px) translateY(0px); }
-  100% { transform: translate(-50%, -50%) rotateX(75deg) translateZ(-500px) translateY(50px); }
+  0% {
+    transform: translate(-50%, -50%) rotateX(80deg) translateZ(-800px) translateY(0px);
+    background-position: 0 0, 0 0, 0 0, 0 0;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotateX(80deg) translateZ(-800px) translateY(100px);
+    background-position: 0 100px, 100px 0, 0 20px, 20px 0;
+  }
+}
+
+/* City scene effects */
+.city-scene {
+  background: linear-gradient(
+    135deg,
+    rgba(20, 30, 48, 0.9) 0%,
+    rgba(36, 59, 85, 0.8) 50%,
+    rgba(45, 55, 72, 0.9) 100%
+  );
+  backdrop-filter: blur(10px);
 }
 
 .hero-gradient {

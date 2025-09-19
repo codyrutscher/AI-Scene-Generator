@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import Hero from './components/Hero';
 import Features from './components/Features';
+import BiomeShowcase from './components/BiomeShowcase';
 import Demo from './components/Demo';
 import Roadmap from './components/Roadmap';
 import Footer from './components/Footer';
@@ -43,6 +44,7 @@ function App() {
         <div className="relative z-10">
           <Hero />
           <Features />
+          <BiomeShowcase />
           <Demo />
           <Roadmap />
           <Footer />
