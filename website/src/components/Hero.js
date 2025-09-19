@@ -20,15 +20,29 @@ const Hero = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 pt-20">
-      <div className="max-w-6xl mx-auto text-center">
+    <div
+      className="min-h-screen flex items-center justify-center px-4 pt-20 relative"
+      style={{
+        backgroundImage: `
+          linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.5)),
+          url('https://pub-41ecf353ea504834b5310a7d56b37182.r2.dev/iStock-497655912.jpg')
+        `,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* Enhanced contrast overlay for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80"></div>
+
+      <div className="max-w-6xl mx-auto text-center relative z-10">
         {/* Main logo/title */}
         <motion.div
           initial={{ opacity: 0, y: -50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1 }}
         >
-          <h1 className="text-7xl md:text-9xl font-bold bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-6">
+          <h1 className="text-7xl md:text-9xl font-bold bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-6 drop-shadow-2xl">
             3DAI
           </h1>
         </motion.div>
