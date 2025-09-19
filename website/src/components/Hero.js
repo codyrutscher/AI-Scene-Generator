@@ -115,17 +115,17 @@ const Hero = () => {
               whileHover={{ scale: 1.02 }}
               className="relative bg-black/50 backdrop-blur-lg rounded-3xl p-4 border border-purple-500/30 shadow-2xl"
             >
-              <video
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="w-full h-auto rounded-2xl shadow-lg"
-                poster="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'><rect width='100%' height='100%' fill='%23111827'/><text x='50%' y='50%' text-anchor='middle' dy='.3em' fill='%236366f1' font-size='48' font-family='sans-serif'>🎮 3DAI Demo</text></svg>"
-              >
-                <source src="https://7df37a758e5a2ee3bc6f3221bdfd44e4.r2.cloudflarestorage.com/gamelogic/2025-09-19_11-15-56.mp4" type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
+              {/* Demo placeholder until Cloudflare bucket is configured */}
+              <div className="w-full h-96 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 rounded-2xl flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-6xl mb-4 animate-pulse">🎮</div>
+                  <div className="text-2xl font-bold text-white mb-2">3DAI Demo Video</div>
+                  <div className="text-gray-400">Coming Soon - Cloudflare Bucket Setup Required</div>
+                  <div className="text-sm text-gray-500 mt-2">
+                    Video: 2025-09-19_11-15-56.mp4 (88MB)
+                  </div>
+                </div>
+              </div>
 
               {/* Video overlay */}
               <div className="absolute top-6 left-6 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2">
