@@ -1,6 +1,6 @@
-# GameLogic: AI Scene Generator
+# 3DAI: Revolutionary AI Scene Generator
 
-**An ambitious 3D scene generation system that aims to accumulate massive 3D asset libraries and enable natural language scene creation.**
+**The world's first AI-powered 3D scene builder that converts real-world photos into 3D models and creates complex scenes through natural language commands.**
 
 ## 🎯 **Project Vision**
 
@@ -47,7 +47,21 @@
 - **"put [model] at [x,y] facing [direction]"**
 - **"place Cottage at 100,100 facing north"**
 - **"add Hover car at 500,500 facing east"**
+- **"scale house by 5x"** or **"make cottage larger"**
 - **Input clears automatically** after placement for rapid scene building
+
+### **📸 Revolutionary Image-to-3D Model Creation**
+- **iPhone camera integration** for capturing real objects
+- **AI-powered 3D reconstruction** from single photos
+- **Custom model naming** and automatic integration
+- **Turn any household item** into a placeable 3D model
+- **Example:** Take photo of coffee mug → "put coffee mug at 50,50"
+
+### **📏 Advanced Model Scaling**
+- **Natural language scaling:** "scale house by 2x"
+- **Contextual commands:** "make cottage larger" or "shrink car"
+- **Preset scale buttons:** 50%, 100%, 200%, 500%
+- **Smart model tracking** for post-placement modifications
 
 ## 🚀 **Quick Start**
 
