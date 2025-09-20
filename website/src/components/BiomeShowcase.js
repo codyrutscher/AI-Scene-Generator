@@ -36,13 +36,24 @@ const BiomeShowcase = () => {
   ];
 
   return (
-    <section className="py-20 px-4 relative overflow-hidden">
-      {/* Enhanced Background with city silhouette */}
-      <div className="absolute inset-0 city-scene">
+    <section
+      className="py-20 px-4 relative overflow-hidden"
+      style={{
+        backgroundImage: `
+          linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.6)),
+          url('https://pub-41ecf353ea504834b5310a7d56b37182.r2.dev/city2.jpg')
+        `,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* Enhanced Background overlay for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-purple-900/40 to-black/70">
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/60 to-transparent"></div>
 
-        {/* Animated city silhouette */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 opacity-30">
+        {/* Animated city silhouette - keeping for visual effect */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 opacity-20">
           {[...Array(20)].map((_, i) => (
             <motion.div
               key={i}

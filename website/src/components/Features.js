@@ -44,13 +44,31 @@ const Features = () => {
       description: "Real-time multiplayer scene editing with version control and conflict resolution",
       tech: "WebRTC • Operational transforms • Git-like versioning",
       color: "from-teal-500 to-cyan-500"
+    },
+    {
+      icon: "📸",
+      title: "Image-to-3D Model Generation",
+      description: "Transform real-world photos into detailed 3D models instantly. Capture any object and seamlessly integrate it into your scenes",
+      tech: "Computer vision • Photogrammetry • AI mesh generation • Texture mapping",
+      color: "from-yellow-500 to-orange-500"
     }
   ];
 
   return (
-    <section className="py-20 px-4 relative">
-      {/* Background gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-900/10 to-transparent"></div>
+    <section
+      className="py-20 px-4 relative"
+      style={{
+        backgroundImage: `
+          linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.6)),
+          url('https://pub-41ecf353ea504834b5310a7d56b37182.r2.dev/city1.jpg')
+        `,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* Enhanced background overlay for better text readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-purple-900/40 to-black/70"></div>
 
       <div className="max-w-7xl mx-auto relative z-10">
         <motion.div
