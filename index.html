@@ -345,10 +345,52 @@
 </head>
 <body>
     <div id="ui">
-        <h3>🌍 Multi-API 3D Model Search</h3>
-        <input type="text" id="search-input" placeholder="Search for any 3D model (car, house, dragon, etc.)">
-        <button id="search-btn">🔍 Search All APIs</button>
-        <div id="status">Ready to search millions of models...</div>
+        <h3>🌍 3DAI Scene Builder</h3>
+
+        <!-- Creation Tabs -->
+        <div class="tab-container">
+            <button id="search-tab" class="tab-btn active">🔍 Place Models</button>
+            <button id="camera-tab" class="tab-btn">📸 Create from Photo</button>
+            <button id="scale-tab" class="tab-btn">📏 Scale Models</button>
+        </div>
+
+        <!-- Search Panel -->
+        <div id="search-panel" class="panel active">
+            <input type="text" id="search-input" placeholder="'put cottage at 100,100 facing north'">
+            <button id="search-btn">🔍 Place Model</button>
+        </div>
+
+        <!-- Camera Panel -->
+        <div id="camera-panel" class="panel">
+            <div class="camera-section">
+                <button id="camera-btn">📸 Take Photo</button>
+                <button id="upload-btn">📁 Upload Image</button>
+                <input type="file" id="image-upload" accept="image/*" style="display: none">
+            </div>
+
+            <video id="camera-stream" autoplay style="display: none; width: 100%; border-radius: 8px; margin: 10px 0;"></video>
+            <canvas id="camera-canvas" style="display: none;"></canvas>
+
+            <div id="image-preview" style="display: none;">
+                <img id="preview-img" style="width: 100%; border-radius: 8px; margin: 10px 0;">
+                <input type="text" id="model-name-input" placeholder="Name this model (e.g., 'Coffee Mug')">
+                <button id="convert-btn">🔄 Convert to 3D Model</button>
+            </div>
+        </div>
+
+        <!-- Scale Panel -->
+        <div id="scale-panel" class="panel">
+            <input type="text" id="scale-input" placeholder="'scale house by 2x' or 'make cottage larger'">
+            <button id="scale-btn">📏 Apply Scaling</button>
+            <div class="scale-presets">
+                <button class="preset-btn" data-scale="0.5">50%</button>
+                <button class="preset-btn" data-scale="1">100%</button>
+                <button class="preset-btn" data-scale="2">200%</button>
+                <button class="preset-btn" data-scale="5">500%</button>
+            </div>
+        </div>
+
+        <div id="status">Ready to build your 3D world...</div>
         <div id="model-info"></div>
     </div>
 
