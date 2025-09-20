@@ -3,8 +3,22 @@ import { motion } from 'framer-motion';
 
 const Footer = () => {
   return (
-    <footer className="py-16 px-4 border-t border-gray-800/50">
-      <div className="max-w-6xl mx-auto">
+    <footer
+      className="py-16 px-4 border-t border-gray-800/50 relative"
+      style={{
+        backgroundImage: `
+          linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.6)),
+          url('https://pub-41ecf353ea504834b5310a7d56b37182.r2.dev/city1.jpg')
+        `,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* Enhanced background overlay for better text readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-purple-900/40 to-black/70"></div>
+
+      <div className="max-w-6xl mx-auto relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
