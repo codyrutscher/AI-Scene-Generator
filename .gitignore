@@ -1,16 +1,6 @@
-node_modules/
-*.log
-*.png
+node_modules
+dist
+out
 .DS_Store
-.env
-
-# Large files and assets
-demo/
-models/
-website/public/demo-video.mp4
-*.mp4
-*.mov
-*.avi
-*.bin
-*.glb
-*.gltf
+.eslintcache
+*.log*
