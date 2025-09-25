@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useThree } from '@react-three/fiber'
 import SelectableObject from './SelectableObject'
 
@@ -36,17 +36,27 @@ export default function SceneContent({ objects, selectedObjects, onObjectSelect,
 
       {/* Objects */}
       {objects.map((obj) => (
-        <SelectableObject
+        <Suspense
           key={obj.id}
-          name={obj.name}
-          position={obj.position}
-          geometry={obj.geometry}
-          color={obj.color}
-          scale={obj.scale}
-          rotation={obj.rotation}
-          isSelected={selectedObjects.has(obj.name)}
-          onSelect={onObjectSelect}
-        />
+          fallback={
+            <mesh position={obj.position}>
+              <boxGeometry args={[0.5, 0.5, 0.5]} />
+              <meshStandardMaterial color="#888888" transparent opacity={0.5} />
+            </mesh>
+          }
+        >
+          <SelectableObject
+            name={obj.name}
+            position={obj.position}
+            geometry={obj.geometry}
+            color={obj.color}
+            scale={obj.scale}
+            rotation={obj.rotation}
+            isSelected={selectedObjects.has(obj.name)}
+            onSelect={onObjectSelect}
+            modelData={obj.modelData}
+          />
+        </Suspense>
       ))}
 
       {/* Grid helper */}

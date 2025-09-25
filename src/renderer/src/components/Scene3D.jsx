@@ -6,9 +6,11 @@ import { OrbitControls } from '@react-three/drei'
 import SceneContent from './3d/SceneContent'
 import CommandInput from './3d/CommandInput'
 import SelectionInfo from './3d/SelectionInfo'
+import ModelSearchResults from './ModelSearchResults'
 
-// Import custom hook
+// Import custom hook and utilities
 import { useSceneObjects } from '../hooks/useSceneObjects'
+import { createModelObject } from '../utils/commandHandler'
 
 // Main component
 export default function Scene3D() {
@@ -19,8 +21,47 @@ export default function Scene3D() {
     lastAction,
     handleObjectSelect,
     handleEmptyClick,
-    handleTextCommand
+    handleTextCommand,
+    showModelSearch,
+    modelSearchResults,
+    modelSearchQuery,
+    pendingModelPosition,
+    isModelSearchLoading,
+    setObjects,
+    setObjectCounter,
+    setLastAction,
+    setSelectedObjects,
+    setShowModelSearch,
+    objectCounter
   } = useSceneObjects()
+
+  // Handle model selection from search results
+  const handleModelSelect = (modelData) => {
+    // Map fileUrl to url for compatibility with createModelObject
+    const mappedModelData = {
+      ...modelData,
+      url: modelData.fileUrl || modelData.url // Use fileUrl from API, fallback to url
+    }
+    
+    console.log('Model selected:', mappedModelData)
+    console.log('Original model data:', modelData)
+    
+    createModelObject(
+      mappedModelData,
+      pendingModelPosition,
+      setObjects,
+      setObjectCounter,
+      setLastAction,
+      setSelectedObjects,
+      objectCounter
+    )
+    setShowModelSearch(false)
+  }
+
+  // Handle model search close
+  const handleModelSearchClose = () => {
+    setShowModelSearch(false)
+  }
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
@@ -33,6 +74,7 @@ export default function Scene3D() {
           objects={objects}
           selectedObjects={selectedObjects}
           onObjectSelect={handleObjectSelect}
+          onEmptyClick={handleEmptyClick}
         />
         <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
       </Canvas>
@@ -50,6 +92,16 @@ export default function Scene3D() {
       <div style={{ position: 'absolute',maxWidth:800, bottom: '20px', left: 0, right: 0,margin:"auto", zIndex: 100 }}>
         <CommandInput onCommand={handleTextCommand} />
       </div>
+
+      {/* Model Search Results Modal */}
+      <ModelSearchResults
+        searchResults={modelSearchResults}
+        searchQuery={modelSearchQuery}
+        isVisible={showModelSearch}
+        isLoading={isModelSearchLoading}
+        onModelSelect={handleModelSelect}
+        onClose={handleModelSearchClose}
+      />
     </div>
   )
 }

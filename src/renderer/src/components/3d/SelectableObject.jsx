@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
+import { useGLTF } from '@react-three/drei'
+import * as THREE from 'three'
 
 // Simple object component with selection handling
 export default function SelectableObject({
@@ -11,15 +13,48 @@ export default function SelectableObject({
   isSelected,
   onSelect,
   scale = [1, 1, 1],
-  rotation = [0, 0, 0]
+  rotation = [0, 0, 0],
+  modelData // For 3D models
 }) {
   const meshRef = useRef(null)
-  const [hovered, setHovered] = useState(false)
 
   // Handle click
   const handleClick = (event) => {
     event.stopPropagation()
     onSelect(name)
+  }
+
+  // Load 3D model using Drei's useGLTF hook for better performance and caching
+  const gltf = geometry === 'model' && modelData?.url ? useGLTF(modelData.url) : null
+  
+  // Create centered model with simple wireframe selection
+  const createCenteredModel = () => {
+    if (!gltf || !gltf.scene) return { scene: null, outlineScene: null }
+    
+    const clonedScene = gltf.scene.clone()
+    
+    // Calculate bounding box and center the model
+    const box = new THREE.Box3().setFromObject(clonedScene)
+    const center = box.getCenter(new THREE.Vector3())
+    clonedScene.position.sub(center)
+    
+    // Create simple wireframe outline for selection
+    let outlineScene = null
+    if (isSelected) {
+      outlineScene = clonedScene.clone()
+      outlineScene.traverse((child) => {
+        if (child.isMesh && child.geometry) {
+          child.material = new THREE.MeshBasicMaterial({
+            color: selectedColor,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.6
+          })
+        }
+      })
+    }
+    
+    return { scene: clonedScene, outlineScene }
   }
 
   // Create geometry based on type
@@ -30,33 +65,84 @@ export default function SelectableObject({
       return <sphereGeometry args={[0.5, 32, 32]} />
     } else if (geometry === 'cylinder') {
       return <cylinderGeometry args={[0.5, 0.5, 1, 32]} />
+    } else if (geometry === 'model') {
+      // For models, we don't return geometry here as we use primitive
+      return null
     }
     return <boxGeometry args={[1, 1, 1]} />
   }
 
+  // Render 3D model
+  if (geometry === 'model') {
+    const modelData = createCenteredModel()
+    
+    if (!modelData.scene) {
+      // Fallback to a box if model fails to load or is loading
+      return (
+        <mesh
+          ref={meshRef}
+          position={position}
+          scale={scale}
+          rotation={rotation}
+          onClick={handleClick}
+        >
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial
+            color="#ff0000"
+            transparent
+            opacity={0.5}
+          />
+        </mesh>
+      )
+    }
+
+    return (
+      <group
+        ref={meshRef}
+        position={position}
+        scale={scale}
+        rotation={rotation}
+        onClick={handleClick}
+      >
+        <primitive object={modelData.scene} />
+        {/* Simple wireframe selection outline */}
+        {isSelected && modelData.outlineScene && (
+          <group scale={[1.01, 1.01, 1.01]}>
+            <primitive object={modelData.outlineScene} />
+          </group>
+        )}
+      </group>
+    )
+  }
+
   return (
-    <mesh
+    <group
       ref={meshRef}
       position={position}
       scale={scale}
       rotation={rotation}
       onClick={handleClick}
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
     >
-      {createGeometry()}
-      <meshStandardMaterial
-        color={isSelected ? selectedColor : hovered ? '#7bb3f0' : color}
-        transparent={hovered && !isSelected}
-        opacity={hovered && !isSelected ? 0.8 : 1}
-      />
-      {/* Selection outline */}
+      {/* Main object */}
+      <mesh>
+        {createGeometry()}
+        <meshStandardMaterial
+          color={isSelected ? selectedColor : color}
+        />
+      </mesh>
+      
+      {/* Simple wireframe selection outline */}
       {isSelected && (
-        <mesh>
+        <mesh scale={[1.02, 1.02, 1.02]}>
           {createGeometry()}
-          <meshBasicMaterial color={selectedColor} wireframe transparent opacity={0.5} />
+          <meshBasicMaterial 
+            color={selectedColor}
+            wireframe 
+            transparent 
+            opacity={0.6}
+          />
         </mesh>
       )}
-    </mesh>
+    </group>
   )
 }

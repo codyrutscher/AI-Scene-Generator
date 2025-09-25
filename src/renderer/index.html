@@ -4,10 +4,11 @@
     <meta charset="UTF-8" />
     <title>Electron</title>
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-  <meta
+  <!-- Temporarily disable CSP to test model loading -->
+  <!-- <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
-    />
+      content="default-src 'self'; script-src 'self' 'unsafe-eval' https://pub-41ecf353ea504834b5310a7d56b37182.r2.dev; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://pub-41ecf353ea504834b5310a7d56b37182.r2.dev; connect-src 'self' https://3-dai-app.vercel.app https://pub-41ecf353ea504834b5310a7d56b37182.r2.dev; media-src 'self' https://pub-41ecf353ea504834b5310a7d56b37182.r2.dev; object-src 'self' https://pub-41ecf353ea504834b5310a7d56b37182.r2.dev; worker-src 'self' blob: https://pub-41ecf353ea504834b5310a7d56b37182.r2.dev; child-src 'self' blob: https://pub-41ecf353ea504834b5310a7d56b37182.r2.dev; font-src 'self' https://pub-41ecf353ea504834b5310a7d56b37182.r2.dev"
+    /> -->
   </head>
 
   <body>

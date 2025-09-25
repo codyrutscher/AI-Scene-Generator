@@ -7,7 +7,14 @@ export const useSceneObjects = () => {
   const [selectedObjects, setSelectedObjects] = useState(new Set())
   const [objects, setObjects] = useState(getInitialObjects())
   const [lastAction, setLastAction] = useState('')
-  const [objectCounter, setObjectCounter] = useState(5) // Start from 5 for new objects
+  const [objectCounter, setObjectCounter] = useState(1) // Start from 1 for new objects
+  
+  // Model search related state
+  const [showModelSearch, setShowModelSearch] = useState(false)
+  const [modelSearchResults, setModelSearchResults] = useState(null)
+  const [modelSearchQuery, setModelSearchQuery] = useState('')
+  const [pendingModelPosition, setPendingModelPosition] = useState([0, 0, 0])
+  const [isModelSearchLoading, setIsModelSearchLoading] = useState(false)
 
   // Handle object selection
   const handleObjectSelect = (name) => {
@@ -40,7 +47,12 @@ export const useSceneObjects = () => {
       setSelectedObjects,
       setLastAction,
       setObjectCounter,
-      objectCounter
+      objectCounter,
+      setShowModelSearch,
+      setModelSearchResults,
+      setModelSearchQuery,
+      setPendingModelPosition,
+      setIsModelSearchLoading
     )
   }
 
@@ -143,7 +155,7 @@ export const useSceneObjects = () => {
   const resetScene = () => {
     setObjects(getInitialObjects())
     setSelectedObjects(new Set())
-    setObjectCounter(5)
+    setObjectCounter(1)
     setLastAction('Scene reset to initial state')
   }
 
@@ -153,6 +165,13 @@ export const useSceneObjects = () => {
     selectedObjects,
     lastAction,
     objectCounter,
+    
+    // Model search state
+    showModelSearch,
+    modelSearchResults,
+    modelSearchQuery,
+    pendingModelPosition,
+    isModelSearchLoading,
     
     // Selection methods
     handleObjectSelect,
@@ -180,7 +199,12 @@ export const useSceneObjects = () => {
     setObjects,
     setSelectedObjects,
     setLastAction,
-    setObjectCounter
+    setObjectCounter,
+    setShowModelSearch,
+    setModelSearchResults,
+    setModelSearchQuery,
+    setPendingModelPosition,
+    setIsModelSearchLoading
   }
 }
 

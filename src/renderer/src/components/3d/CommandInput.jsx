@@ -29,7 +29,7 @@ export default function CommandInput({ onCommand }) {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Commands: create cube | select all | scale selected 2 | rotate cube1 45 | move selected to 0 0 0"
+          placeholder="Commands: create cube | create model house at 0 0 0 | select all | scale selected 2 | rotate cube1 45 | move selected to 0 0 0"
           style={{
             flex: 1,
             padding: '10px',

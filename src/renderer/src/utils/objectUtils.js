@@ -159,44 +159,7 @@ export const transformObjectRotation = (currentRotation, rotationValues) => {
   ]
 }
 
-// Initial objects data
+// Initial objects data - empty scene
 export const getInitialObjects = () => {
-  return [
-    {
-      id: 'cube1',
-      name: 'cube1',
-      position: [-2, 0, 0],
-      geometry: 'box',
-      color: '#4a90e2',
-      scale: [1, 1, 1],
-      rotation: [0, 0, 0]
-    },
-    {
-      id: 'cube2',
-      name: 'cube2',
-      position: [2, 0, 0],
-      geometry: 'box',
-      color: '#4a90e2',
-      scale: [1, 1, 1],
-      rotation: [0, 0, 0]
-    },
-    {
-      id: 'sphere1',
-      name: 'sphere1',
-      position: [0, 0, -2],
-      geometry: 'sphere',
-      color: '#e74c3c',
-      scale: [1, 1, 1],
-      rotation: [0, 0, 0]
-    },
-    {
-      id: 'sphere2',
-      name: 'sphere2',
-      position: [0, 0, 2],
-      geometry: 'sphere',
-      color: '#e74c3c',
-      scale: [1, 1, 1],
-      rotation: [0, 0, 0]
-    }
-  ]
+  return []
 }

@@ -1,14 +1,18 @@
 // Command handling utilities
+import { ModelSearch } from './modelSearch.js';
+
+// Initialize model search instance
+const modelSearch = new ModelSearch();
 
 // Parse command and execute appropriate action
-export const handleCommand = (command, objects, selectedObjects, setObjects, setSelectedObjects, setLastAction, setObjectCounter, objectCounter) => {
+export const handleCommand = (command, objects, selectedObjects, setObjects, setSelectedObjects, setLastAction, setObjectCounter, objectCounter, setShowModelSearch, setModelSearchResults, setModelSearchQuery, setPendingModelPosition, setIsModelSearchLoading) => {
   console.log('Command received:', command)
   const parts = command.split(' ')
   const action = parts[0]
 
   // Creation commands
   if (action === 'create' && parts.length >= 2) {
-    return handleCreateCommand(parts, setObjects, setObjectCounter, setLastAction, setSelectedObjects, objectCounter)
+    return handleCreateCommand(parts, setObjects, setObjectCounter, setLastAction, setSelectedObjects, objectCounter, setShowModelSearch, setModelSearchResults, setModelSearchQuery, setPendingModelPosition, setIsModelSearchLoading)
   }
 
   // Selection commands
@@ -62,10 +66,34 @@ export const handleCommand = (command, objects, selectedObjects, setObjects, set
 }
 
 // Handle create commands
-const handleCreateCommand = (parts, setObjects, setObjectCounter, setLastAction, setSelectedObjects, objectCounter) => {
+const handleCreateCommand = (parts, setObjects, setObjectCounter, setLastAction, setSelectedObjects, objectCounter, setShowModelSearch, setModelSearchResults, setModelSearchQuery, setPendingModelPosition, setIsModelSearchLoading) => {
   const shapeType = parts[1]
   let color
   let position
+
+  // Handle create model commands
+  if (shapeType === 'model' && parts.length >= 3) {
+    return handleCreateModelCommand(parts, setLastAction, setShowModelSearch, setModelSearchResults, setModelSearchQuery, setPendingModelPosition, setIsModelSearchLoading)
+  }
+  
+  // Handle test model command
+  if (shapeType === 'test' && parts[2] === 'model') {
+    // Parse position (e.g., "create test model at 2 0 0")
+    const atIndex = parts.indexOf('at')
+    let position = [0, 0, 0] // default position
+    
+    if (atIndex !== -1 && parts.length >= atIndex + 4) {
+      const x = parseFloat(parts[atIndex + 1])
+      const y = parseFloat(parts[atIndex + 2])
+      const z = parseFloat(parts[atIndex + 3])
+      if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+        position = [x, y, z]
+      }
+    }
+    
+    createTestModel(position, setObjects, setObjectCounter, setLastAction, setSelectedObjects, objectCounter)
+    return
+  }
 
   // Parse optional color (e.g., "create red cube")
   const colorKeywords = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'cyan']
@@ -105,6 +133,9 @@ const handleCreateCommand = (parts, setObjects, setObjectCounter, setLastAction,
     createObject('sphere', color, position, setObjects, setObjectCounter, setLastAction, setSelectedObjects, objectCounter)
   } else if (shapeType === 'cylinder') {
     createObject('cylinder', color, position, setObjects, setObjectCounter, setLastAction, setSelectedObjects, objectCounter)
+  } else if (shapeType === 'model') {
+    // Handle model creation - delegate to handleCreateModelCommand
+    handleCreateModelCommand(parts, setLastAction, setShowModelSearch, setModelSearchResults, setModelSearchQuery, setPendingModelPosition, setIsModelSearchLoading)
   } else {
     setLastAction(`Unknown shape type: ${shapeType}`)
   }
@@ -140,6 +171,94 @@ const createObject = (geometry, color, position, setObjects, setObjectCounter, s
   // Auto-select the new object
   setSelectedObjects(new Set([newName]))
 
+  return newObject
+}
+
+// Handle create model commands
+const handleCreateModelCommand = async (parts, setLastAction, setShowModelSearch, setModelSearchResults, setModelSearchQuery, setPendingModelPosition, setIsModelSearchLoading) => {
+  // Parse command: "create model <search_term> at <x> <y> <z>"
+  const searchTerm = parts[2]
+  
+  // Parse position (e.g., "create model house at 2 0 0")
+  const atIndex = parts.indexOf('at')
+  let position = [0, 0, 0] // default position
+  
+  if (atIndex !== -1 && parts.length >= atIndex + 4) {
+    const x = parseFloat(parts[atIndex + 1])
+    const y = parseFloat(parts[atIndex + 2])
+    const z = parseFloat(parts[atIndex + 3])
+    if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+      position = [x, y, z]
+    }
+  }
+  
+  try {
+    setLastAction(`Searching for models: ${searchTerm}...`)
+    setIsModelSearchLoading(true)
+    
+    // Search for models using the API
+    const searchResults = await modelSearch.searchModels(searchTerm)
+    
+    if (searchResults.error) {
+      setLastAction(`Model search failed: ${searchResults.error}`)
+      setIsModelSearchLoading(false)
+      return
+    }
+    
+    if (searchResults.models.length === 0) {
+      setLastAction(`No models found for: ${searchTerm}`)
+      setIsModelSearchLoading(false)
+      return
+    }
+    
+    // Store the search results and position for later use
+    setModelSearchResults(searchResults)
+    setModelSearchQuery(searchTerm)
+    setPendingModelPosition(position)
+    setShowModelSearch(true)
+    setIsModelSearchLoading(false)
+    
+    setLastAction(`Found ${searchResults.models.length} models for "${searchTerm}". Select one to place at position [${position.join(', ')}].`)
+    
+  } catch (error) {
+    console.error('Model search error:', error)
+    setLastAction(`Failed to search for models: ${error.message}`)
+    setIsModelSearchLoading(false)
+  }
+}
+
+
+
+// Create model object (called when user selects a model from search results)
+export const createModelObject = (modelData, position, setObjects, setObjectCounter, setLastAction, setSelectedObjects, objectCounter) => {
+  console.log('Creating model object with data:', modelData)
+  const newId = `model${objectCounter}`
+  const newName = `${modelData.name.replace(/\s+/g, '_').toLowerCase()}${objectCounter}`
+  
+  const newObject = {
+    id: newId,
+    name: newName,
+    position: position || generateRandomPosition(),
+    geometry: 'model', // Special geometry type for 3D models
+    modelData: {
+      url: modelData.url,
+      thumbnail: modelData.thumbnail,
+      originalName: modelData.name,
+      description: modelData.description,
+      source: modelData.source
+    },
+    scale: [1, 1, 1],
+    rotation: [0, 0, 0],
+    type: 'model' // Mark as 3D model for special handling
+  }
+  
+  setObjects((prev) => [...prev, newObject])
+  setObjectCounter((prev) => prev + 1)
+  setLastAction(`Created 3D model: ${newName} at position [${position.join(', ')}]`)
+  
+  // Auto-select the new model
+  setSelectedObjects(new Set([newName]))
+  
   return newObject
 }
 
