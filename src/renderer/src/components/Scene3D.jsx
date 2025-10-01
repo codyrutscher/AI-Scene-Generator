@@ -8,35 +8,45 @@ import CommandInput from './3d/CommandInput'
 import SelectionInfo from './3d/SelectionInfo'
 import ModelSearchResults from './ModelSearchResults'
 
-// Import custom hook and utilities
-import { useSceneObjects } from '../hooks/useSceneObjects'
-import { createModelObject } from '../utils/commandHandler'
+// Import Zustand stores and utilities
+import { useSceneStore } from '../stores/sceneStore'
+import { useSelectionStore } from '../stores/selectionStore'
+import { useModelSearchStore } from '../stores/modelSearchStore'
+import { createModelObject, handleCommand } from '../utils/commandHandlerZustand'
 
 // Main component
 export default function Scene3D() {
-  // Use the custom hook for all scene object management
-  const {
-    objects,
-    selectedObjects,
-    lastAction,
-    handleObjectSelect,
-    handleEmptyClick,
-    handleTextCommand,
-    showModelSearch,
-    modelSearchResults,
-    modelSearchQuery,
-    pendingModelPosition,
+  // Use Zustand stores for state management
+  const { objects } = useSceneStore()
+  const { selectedObjects, lastAction, selectObject, clearSelection } = useSelectionStore()
+  const { 
+    showModelSearch, 
+    modelSearchResults, 
+    modelSearchQuery, 
+    pendingModelPosition, 
     isModelSearchLoading,
-    setObjects,
-    setObjectCounter,
-    setLastAction,
-    setSelectedObjects,
-    setShowModelSearch,
-    objectCounter
-  } = useSceneObjects()
+    setShowModelSearch
+  } = useModelSearchStore()
+
+  // Handle object selection
+  const handleObjectSelect = (objectName) => {
+    selectObject(objectName)
+  }
+
+  // Handle empty space click
+  const handleEmptyClick = () => {
+    clearSelection()
+  }
+
+  // Handle text commands
+  const handleTextCommand = async (command) => {
+    await handleCommand(command)
+  }
 
   // Handle model selection from search results
   const handleModelSelect = (modelData) => {
+    const { pendingModelPosition, setShowModelSearch } = useModelSearchStore.getState()
+    
     // Map fileUrl to url for compatibility with createModelObject
     const mappedModelData = {
       ...modelData,
@@ -44,17 +54,9 @@ export default function Scene3D() {
     }
     
     console.log('Model selected:', mappedModelData)
-    console.log('Original model data:', modelData)
+    console.log('Pending position:', pendingModelPosition)
     
-    createModelObject(
-      mappedModelData,
-      pendingModelPosition,
-      setObjects,
-      setObjectCounter,
-      setLastAction,
-      setSelectedObjects,
-      objectCounter
-    )
+    createModelObject(mappedModelData, pendingModelPosition)
     setShowModelSearch(false)
   }
 
@@ -76,7 +78,7 @@ export default function Scene3D() {
           onObjectSelect={handleObjectSelect}
           onEmptyClick={handleEmptyClick}
         />
-        <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
+        {/* <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} /> */}
       </Canvas>
 
       {/* UI Overlay */}

@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 import { useEffect, Suspense } from 'react'
-import { useThree } from '@react-three/fiber'
+import { useThree } from '@react-three/fiber' 
 import SelectableObject from './SelectableObject'
+import GridArea from './GridArea'
 
 // Scene content component
 export default function SceneContent({ objects, selectedObjects, onObjectSelect, onEmptyClick }) {
@@ -28,11 +29,7 @@ export default function SceneContent({ objects, selectedObjects, onObjectSelect,
       <ambientLight intensity={0.5} />
       <directionalLight position={[10, 10, 5]} intensity={1} />
 
-      {/* Ground plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1, 0]}>
-        <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial color="#f0f0f0" />
-      </mesh>
+ 
 
       {/* Objects */}
       {objects.map((obj) => (
@@ -52,15 +49,15 @@ export default function SceneContent({ objects, selectedObjects, onObjectSelect,
             color={obj.color}
             scale={obj.scale}
             rotation={obj.rotation}
-            isSelected={selectedObjects.has(obj.name)}
+            isSelected={selectedObjects.has ? selectedObjects.has(obj.name) : selectedObjects.includes(obj.name)}
             onSelect={onObjectSelect}
             modelData={obj.modelData}
           />
         </Suspense>
       ))}
+      <GridArea />
 
-      {/* Grid helper */}
-      <gridHelper args={[100, 100]} position={[0, -1, 0]} />
+ 
     </>
   )
 }
