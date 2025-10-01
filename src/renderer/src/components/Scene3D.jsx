@@ -7,6 +7,7 @@ import SceneContent from './3d/SceneContent'
 import CommandInput from './3d/CommandInput'
 import SelectionInfo from './3d/SelectionInfo'
 import ModelSearchResults from './ModelSearchResults'
+import LevaControls from './ui/LevaControls'
 
 // Import Zustand stores and utilities
 import { useSceneStore } from '../stores/sceneStore'
@@ -104,6 +105,9 @@ export default function Scene3D() {
         onModelSelect={handleModelSelect}
         onClose={handleModelSearchClose}
       />
+
+      {/* Leva Controls for Transform Manipulation */}
+      <LevaControls />
     </div>
   )
 }
