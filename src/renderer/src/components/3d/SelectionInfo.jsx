@@ -4,15 +4,18 @@
 export default function SelectionInfo({ selectedObjects, selectedCount, totalCount, lastAction }) {
   // Determine action type for better styling
   const getActionStyle = (action) => {
-    if (action.includes('Created') || action.includes('Selected')) {
+    // Handle both string and object types for lastAction
+    const actionText = typeof action === 'string' ? action : (action?.text || action?.message || String(action))
+    
+    if (actionText.includes('Created') || actionText.includes('Selected')) {
       return { color: '#28a745', fontWeight: 'bold' } // Green for success
     } else if (
-      action.includes('Moved') ||
-      action.includes('Scaled') ||
-      action.includes('Rotated')
+      actionText.includes('Moved') ||
+      actionText.includes('Scaled') ||
+      actionText.includes('Rotated')
     ) {
       return { color: '#007bff', fontWeight: 'bold' } // Blue for transformations
-    } else if (action.includes('Deselected') || action.includes('not found')) {
+    } else if (actionText.includes('Deselected') || actionText.includes('not found')) {
       return { color: '#dc3545', fontWeight: 'normal' } // Red for warnings/deselection
     }
     return { color: '#6c757d', fontWeight: 'normal' } // Gray for default
@@ -22,7 +25,7 @@ export default function SelectionInfo({ selectedObjects, selectedCount, totalCou
     <div
       style={{
         position: 'absolute',
-        top: '20px',
+        top: '80px',
         right: '20px',
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
         padding: '15px',
@@ -54,7 +57,7 @@ export default function SelectionInfo({ selectedObjects, selectedCount, totalCou
         >
           <strong>Last Action:</strong>
           <br />
-          {lastAction}
+          {typeof lastAction === 'string' ? lastAction : (lastAction?.text || lastAction?.message || String(lastAction))}
         </div>
       )}
 
