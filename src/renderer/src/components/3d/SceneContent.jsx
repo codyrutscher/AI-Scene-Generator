@@ -5,8 +5,15 @@ import SelectableObject from './SelectableObject'
 import GridArea from './GridArea'
 
 // Scene content component
-export default function SceneContent({ objects, selectedObjects, onObjectSelect, onEmptyClick }) {
-  const { gl } = useThree()
+export default function SceneContent({ objects, selectedObjects, onObjectSelect, onEmptyClick, onSceneRef }) {
+  const { gl, scene } = useThree()
+
+  // Pass scene reference to parent component for export functionality
+  useEffect(() => {
+    if (onSceneRef && scene) {
+      onSceneRef(scene)
+    }
+  }, [scene, onSceneRef])
 
   // Handle clicks on empty space
   const handleCanvasClick = (event) => {

@@ -25,7 +25,7 @@ export default function SelectionInfo({ selectedObjects, selectedCount, totalCou
     <div
       style={{
         position: 'absolute',
-        top: '20px',
+        top: '80px',
         right: '20px',
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
         padding: '15px',
