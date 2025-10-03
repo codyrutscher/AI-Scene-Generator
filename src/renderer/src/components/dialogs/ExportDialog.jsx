@@ -24,12 +24,12 @@ import {
   Close,
   Warning,
   Archive as Package,
-  CloudDownload
+  CloudDownload,
+  TextSnippet
 } from '@mui/icons-material';
 import { JSONExportService } from '../../services/jsonExportService.js';
 import { GLBExportService } from '../../services/glbExportService.js';
-import { FileDownloadUtil } from '../../services/fileDownloadUtil.js';
-import { FileText } from 'lucide-react';
+import { FileDownloadUtil } from '../../services/fileDownloadUtil.js'; 
 
 const ExportDialog = ({ isOpen, onClose, scene, sceneData }) => {
   const [exportOptions, setExportOptions] = useState({
@@ -194,7 +194,7 @@ const ExportDialog = ({ isOpen, onClose, scene, sceneData }) => {
                   }}
                   onClick={() => handleOptionChange('format', 'json')}
                 >
-                  <FileText sx={{ fontSize: 32, color: 'primary.main', mb: 1 }} />
+                  <TextSnippet sx={{ fontSize: 32, color: 'primary.main', mb: 1 }} />
                   <Typography variant="body2" fontWeight="medium">JSON</Typography>
                   <Typography variant="caption" color="text.secondary">Scene data</Typography>
                 </Paper>

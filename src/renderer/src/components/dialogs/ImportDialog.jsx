@@ -131,8 +131,7 @@ const ImportDialog = ({ isOpen, onClose, onImport }) => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
+  }; 
   return (
     <Dialog 
       open={isOpen} 
@@ -287,16 +286,7 @@ const ImportDialog = ({ isOpen, onClose, onImport }) => {
                   <Typography variant="caption" color="text.secondary">Objects</Typography>
                   <Typography variant="body2" fontWeight="medium">{previewData.objectCount}</Typography>
                 </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Version</Typography>
-                  <Typography variant="body2" fontWeight="medium">{previewData.version}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Created</Typography>
-                  <Typography variant="body2" fontWeight="medium">
-                    {new Date(previewData.createdAt).toLocaleDateString()}
-                  </Typography>
-                </Box>
+                
                 <Box>
                   <Typography variant="caption" color="text.secondary">App Version</Typography>
                   <Typography variant="body2" fontWeight="medium">{previewData.appVersion || 'Unknown'}</Typography>
