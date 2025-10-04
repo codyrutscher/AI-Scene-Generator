@@ -3,6 +3,7 @@ import { ModelSearch } from './modelSearch.js'
 import { useSceneStore } from '../stores/sceneStore.js'
 import { useSelectionStore } from '../stores/selectionStore.js'
 import { useModelSearchStore } from '../stores/modelSearchStore.js'
+import { claudeService } from './claudeService.js'
 
 // Initialize model search instance
 const modelSearch = new ModelSearch()
@@ -16,15 +17,54 @@ const generateRandomPosition = () => [
 
 // Parse command and execute appropriate action
 export const handleCommand = async (command) => {
-  const parts = command.toLowerCase().trim().split(/\s+/)
+  const originalCommand = command.trim()
+  
+  // Try to use Claude if initialized
+  if (claudeService.isInitialized()) {
+    try {
+      const { objects } = useSceneStore.getState()
+      const { selectedObjects } = useSelectionStore.getState()
+      
+      // Build scene context for Claude
+      const sceneContext = {
+        objectCount: objects.length,
+        objectNames: objects.map(obj => obj.name),
+        selectedCount: selectedObjects.size,
+        selectedNames: Array.from(selectedObjects)
+      }
+      
+      // Parse natural language with Claude
+      const parsedCommand = await claudeService.parseCommand(originalCommand, sceneContext)
+      console.log('Claude parsed:', originalCommand, '→', parsedCommand)
+      
+      // Execute the parsed command
+      command = parsedCommand
+    } catch (error) {
+      console.error('Claude parsing failed:', error)
+      useSelectionStore.getState().setLastAction(`AI parsing failed: ${error.message}`)
+      return
+    }
+  } else {
+    // If Claude is not enabled, normalize the command format
+    // Remove commas and parentheses from coordinates
+    command = command.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim()
+  }
+  
+  // Parse command - preserve case for model search terms
+  const parts = command.trim().split(/\s+/)
   
   if (parts.length === 0) return
   
-  const action = parts[0]
+  const action = parts[0].toLowerCase()
   
   switch (action) {
     case 'create':
       await handleCreateCommand(parts)
+      break
+    case 'clone':
+    case 'duplicate':
+    case 'copy':
+      handleCloneCommand(parts)
       break
     case 'select':
       handleSelectCommand(parts)
@@ -60,7 +100,7 @@ const handleCreateCommand = async (parts) => {
     return
   }
 
-  const objectType = parts[1]
+  const objectType = parts[1].toLowerCase()
   
   if (objectType === 'model') {
     await handleCreateModelCommand(parts)
@@ -196,6 +236,76 @@ export const createModelObject = (modelData, position) => {
   return newObject
 }
 
+// Handle clone/duplicate commands
+const handleCloneCommand = (parts) => {
+  const { objects, addObject, objectCounter, setObjects, setObjectCounter } = useSceneStore.getState()
+  const { selectedObjects, clearSelection, selectObject, setLastAction } = useSelectionStore.getState()
+  
+  if (selectedObjects.size === 0) {
+    setLastAction('No objects selected to clone')
+    return
+  }
+  
+  // Parse position if provided
+  let position = null
+  const atIndex = parts.findIndex(p => p.toLowerCase() === 'at')
+  if (atIndex !== -1 && atIndex + 3 < parts.length) {
+    const x = parseFloat(parts[atIndex + 1])
+    const y = parseFloat(parts[atIndex + 2])
+    const z = parseFloat(parts[atIndex + 3])
+    if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+      position = [x, y, z]
+    }
+  }
+  
+  // If no position specified, offset by 2 units on X axis
+  if (!position) {
+    position = [2, 0, 0]
+  }
+  
+  const clonedObjects = []
+  const newObjects = [...objects]
+  let counter = objectCounter
+  
+  selectedObjects.forEach(selectedName => {
+    const originalObject = objects.find(obj => obj.name === selectedName)
+    if (!originalObject) return
+    
+    // Create a deep copy of the object
+    const clonedObject = {
+      ...originalObject,
+      id: `${originalObject.geometry}${counter}`,
+      name: `${originalObject.geometry}${counter}`,
+      position: position || [
+        originalObject.position[0] + 2,
+        originalObject.position[1],
+        originalObject.position[2]
+      ],
+      // Deep copy arrays
+      scale: [...originalObject.scale],
+      rotation: [...originalObject.rotation]
+    }
+    
+    // If it's a model, deep copy modelData
+    if (originalObject.modelData) {
+      clonedObject.modelData = { ...originalObject.modelData }
+    }
+    
+    newObjects.push(clonedObject)
+    clonedObjects.push(clonedObject.name)
+    counter++
+  })
+  
+  setObjects(newObjects)
+  setObjectCounter(counter)
+  
+  // Select the cloned objects
+  clearSelection()
+  clonedObjects.forEach(name => selectObject(name))
+  
+  setLastAction(`Cloned ${clonedObjects.length} object(s): ${clonedObjects.join(', ')}`)
+}
+
 // Handle select commands
 const handleSelectCommand = (parts) => {
   const { objects } = useSceneStore.getState()
@@ -206,7 +316,7 @@ const handleSelectCommand = (parts) => {
     return
   }
   
-  const target = parts[1]
+  const target = parts[1].toLowerCase()
   const objectNames = objects.map(obj => obj.name)
   
   if (target === 'all') {
