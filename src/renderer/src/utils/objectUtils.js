@@ -11,7 +11,7 @@ export const generateRandomPosition = () => {
 
 // Create new object with given parameters
 export const createNewObject = (geometry, color, position, objectCounter) => {
-  const newId = `${geometry}${objectCounter}`
+  const newId = crypto.randomUUID()
   const newName = `${geometry}${objectCounter}`
   
   return {

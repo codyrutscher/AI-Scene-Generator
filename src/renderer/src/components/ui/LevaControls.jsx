@@ -34,6 +34,14 @@ export default function LevaControls() {
     })
   }, [primaryObject, selectedObjectsData, updateObject])
 
+  // Helper function to check if scale values are uniform (all equal)
+  const isUniformScale = useCallback((scale) => {
+    if (!scale || scale.length !== 3) return false
+    const [x, y, z] = scale
+    const tolerance = 0.001 // Small tolerance for floating point comparison
+    return Math.abs(x - y) < tolerance && Math.abs(y - z) < tolerance && Math.abs(x - z) < tolerance
+  }, [])
+
   // Get current control values from store (always fresh)
   const getCurrentControlValues = useCallback(() => {
     if (!primaryObject) return null
@@ -45,9 +53,10 @@ export default function LevaControls() {
         (primaryObject.rotation[1] * 180) / Math.PI,
         (primaryObject.rotation[2] * 180) / Math.PI
       ],
-      scale: [primaryObject.scale[0], primaryObject.scale[1], primaryObject.scale[2]]
+      scale: [primaryObject.scale[0], primaryObject.scale[1], primaryObject.scale[2]],
+      uniformScaling: isUniformScale(primaryObject.scale)
     }
-  }, [primaryObject])
+  }, [primaryObject, isUniformScale])
 
   // Leva controls configuration - recreate when object changes to show fresh values
   const [controls, setControls] = useControls(() => {
@@ -91,7 +100,7 @@ export default function LevaControls() {
       
       // Scale Controls
       uniformScaling: {
-        value: true
+        value: currentValues.uniformScaling
       },
       
       // Scale Controls
@@ -99,7 +108,7 @@ export default function LevaControls() {
         value: currentValues.scale,
         step: 0.01,
         min: 0.01,
-        max: 10,
+        max: 100,
         onChange: (value, path, { get }) => {
           const uniform = get('uniformScaling')
           
@@ -171,7 +180,8 @@ export default function LevaControls() {
     setControls({
       position: currentValues.position,
       rotation: currentValues.rotation,
-      scale: currentValues.scale
+      scale: currentValues.scale,
+      uniformScaling: currentValues.uniformScaling
     })
   }, [
     hasSelection,

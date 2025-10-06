@@ -173,8 +173,10 @@ export default function Scene3D() {
         />
       </div>
 
-      <div style={{ position: 'absolute',maxWidth:800, bottom: '20px', left: 0, right: 0,margin:"auto", zIndex: 100 }}>
-        <CommandInput onCommand={handleTextCommand} />
+      <div style={{ position: 'absolute',maxWidth:800, bottom: '20px', left: 0, right: 0,margin:"auto", zIndex: 100, pointerEvents: 'none' }}>
+        <div style={{ pointerEvents: 'auto' }}>
+          <CommandInput onCommand={handleTextCommand} />
+        </div>
       </div>
 
       {/* Model Search Results Modal */}

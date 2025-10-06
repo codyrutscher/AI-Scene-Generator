@@ -202,7 +202,7 @@ export const createModelObject = (modelData, position) => {
   const { clearSelection, selectObject, setLastAction } = useSelectionStore.getState()
   
   console.log('Creating model object with data:', modelData)
-  const newId = `model${objectCounter}`
+  const newId = crypto.randomUUID()
   const newName = `${modelData.name.replace(/\s+/g, '_').toLowerCase()}${objectCounter}`
   
   const newObject = {
@@ -274,7 +274,7 @@ const handleCloneCommand = (parts) => {
     // Create a deep copy of the object
     const clonedObject = {
       ...originalObject,
-      id: `${originalObject.geometry}${counter}`,
+      id: crypto.randomUUID(),
       name: `${originalObject.geometry}${counter}`,
       position: position || [
         originalObject.position[0] + 2,

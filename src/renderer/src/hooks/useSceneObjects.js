@@ -96,7 +96,7 @@ export const useSceneObjects = () => {
 
   // Add new object programmatically
   const addObject = (geometry, color, position) => {
-    const newId = `${geometry}${objectCounter}`
+    const newId = crypto.randomUUID()
     const newName = `${geometry}${objectCounter}`
     const newObject = {
       id: newId,

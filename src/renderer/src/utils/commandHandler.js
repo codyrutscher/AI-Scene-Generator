@@ -152,7 +152,7 @@ const generateRandomPosition = () => {
 
 // Create new object
 const createObject = (geometry, color, position, setObjects, setObjectCounter, setLastAction, setSelectedObjects, objectCounter) => {
-  const newId = `${geometry}${objectCounter}`
+  const newId = crypto.randomUUID()
   const newName = `${geometry}${objectCounter}`
   const newObject = {
     id: newId,
@@ -232,7 +232,7 @@ const handleCreateModelCommand = async (parts, setLastAction, setShowModelSearch
 // Create model object (called when user selects a model from search results)
 export const createModelObject = (modelData, position, setObjects, setObjectCounter, setLastAction, setSelectedObjects, objectCounter) => {
   console.log('Creating model object with data:', modelData)
-  const newId = `model${objectCounter}`
+  const newId = crypto.randomUUID()
   const newName = `${modelData.name.replace(/\s+/g, '_').toLowerCase()}${objectCounter}`
   
   const newObject = {

@@ -23,7 +23,7 @@ export const useSceneStore = create()(
       
       addObject: (geometry, color, position) => {
         const { objectCounter } = get()
-        const newId = `${geometry}${objectCounter}`
+        const newId = crypto.randomUUID()
         const newName = `${geometry}${objectCounter}`
         const newObject = {
           id: newId,
