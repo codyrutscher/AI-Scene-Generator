@@ -3,6 +3,7 @@ import { useEffect, Suspense } from 'react'
 import { useThree } from '@react-three/fiber' 
 import SelectableObject from './SelectableObject'
 import GridArea from './GridArea'
+import { Sky } from '@react-three/drei'
 
 // Scene content component
 export default function SceneContent({ objects, selectedObjects, onObjectSelect, onEmptyClick, onSceneRef }) {
@@ -39,31 +40,34 @@ export default function SceneContent({ objects, selectedObjects, onObjectSelect,
  
 
       {/* Objects */}
-      {objects.map((obj) => (
-        <Suspense
-          key={obj.id}
-          fallback={
-            <mesh position={obj.position}>
-              <boxGeometry args={[0.5, 0.5, 0.5]} />
-              <meshStandardMaterial color="#888888" transparent opacity={0.5} />
-            </mesh>
-          }
-        >
-          <SelectableObject
-            name={obj.name}
-            position={obj.position}
-            geometry={obj.geometry}
-            color={obj.color}
-            scale={obj.scale}
-            rotation={obj.rotation}
-            isSelected={selectedObjects.has ? selectedObjects.has(obj.name) : selectedObjects.includes(obj.name)}
-            onSelect={onObjectSelect}
-            modelData={obj.modelData}
-          />
-        </Suspense>
-      ))}
+      {objects.map((obj) => {
+        return (
+          <Suspense
+            key={obj.id}
+            fallback={
+              <mesh position={obj.position}>
+                <boxGeometry args={[0.5, 0.5, 0.5]} />
+                <meshStandardMaterial color="#888888" transparent opacity={0.5} />
+              </mesh>
+            }
+          >
+            <SelectableObject
+              name={obj.name}
+              position={obj.position}
+              geometry={obj.geometry}
+              color={obj.color}
+              scale={obj.scale}
+              rotation={obj.rotation}
+              isSelected={selectedObjects.has ? selectedObjects.has(obj.name) : selectedObjects.includes(obj.name)}
+              onSelect={onObjectSelect}
+              modelData={obj} // Pass the entire object as modelData so variant is accessible
+              terrainProps={obj.terrainProps}
+            />
+          </Suspense>
+        )
+      })}
       <GridArea />
-
+{/* <Sky sunPosition={[10, 10, 5]} /> */}
  
     </>
   )

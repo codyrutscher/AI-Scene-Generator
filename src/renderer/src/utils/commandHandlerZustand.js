@@ -18,25 +18,25 @@ const generateRandomPosition = () => [
 // Parse command and execute appropriate action
 export const handleCommand = async (command) => {
   const originalCommand = command.trim()
-  
+
   // Try to use Claude if initialized
   if (claudeService.isInitialized()) {
     try {
       const { objects } = useSceneStore.getState()
       const { selectedObjects } = useSelectionStore.getState()
-      
+
       // Build scene context for Claude
       const sceneContext = {
         objectCount: objects.length,
-        objectNames: objects.map(obj => obj.name),
+        objectNames: objects.map((obj) => obj.name),
         selectedCount: selectedObjects.size,
         selectedNames: Array.from(selectedObjects)
       }
-      
+
       // Parse natural language with Claude
       const parsedCommand = await claudeService.parseCommand(originalCommand, sceneContext)
       console.log('Claude parsed:', originalCommand, '→', parsedCommand)
-      
+
       // Execute the parsed command
       command = parsedCommand
     } catch (error) {
@@ -49,14 +49,14 @@ export const handleCommand = async (command) => {
     // Remove commas and parentheses from coordinates
     command = command.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim()
   }
-  
+
   // Parse command - preserve case for model search terms
   const parts = command.trim().split(/\s+/)
-  
+
   if (parts.length === 0) return
-  
+
   const action = parts[0].toLowerCase()
-  
+
   switch (action) {
     case 'create':
       await handleCreateCommand(parts)
@@ -82,6 +82,9 @@ export const handleCommand = async (command) => {
     case 'move':
       handleMoveCommand(parts)
       break
+    case 'change':
+      handleChangeCommand(parts)
+      break
     case 'clear':
       handleClearCommand()
       break
@@ -101,23 +104,118 @@ const handleCreateCommand = async (parts) => {
   }
 
   const objectType = parts[1].toLowerCase()
-  
+
   if (objectType === 'model') {
     await handleCreateModelCommand(parts)
+  } else if (objectType === 'terrain') {
+    handleCreateTerrainCommand(parts)
   } else {
     handleCreateBasicObject(parts)
   }
+}
+
+// Handle terrain creation
+const handleCreateTerrainCommand = (parts) => {
+  const { objects, setObjects, objectCounter, setObjectCounter } = useSceneStore.getState()
+  const { setLastAction, clearSelection, selectObject } = useSelectionStore.getState()
+
+  let variant = 'heightmap1' // default variant
+  let heightmapIndex = 1 // default heightmap
+  let position = null
+  // Use undefined to let Terrain component choose first available texture
+  let grassTexture = undefined
+  let mudTexture = undefined
+  let rockTexture = undefined
+
+  // Parse variant and position
+  if (parts.length >= 3) {
+    const variantCandidate = parts[2].toLowerCase()
+
+    // Check for heightmap variants (heightmap1-5)
+    const heightmapMatch = variantCandidate.match(/^heightmap(\d)$/)
+    if (heightmapMatch) {
+      const index = parseInt(heightmapMatch[1])
+      if (index >= 1 && index <= 5) {
+        variant = variantCandidate
+        heightmapIndex = index
+      }
+    }
+
+    // Parse additional texture parameters
+    for (let i = 3; i < parts.length; i++) {
+      if (parts[i] === 'grass' && i + 1 < parts.length) {
+        grassTexture = parts[i + 1]
+        i++ // skip next part as it's consumed
+      } else if (parts[i] === 'mud' && i + 1 < parts.length) {
+        mudTexture = parts[i + 1]
+        i++
+      } else if (parts[i] === 'rock' && i + 1 < parts.length) {
+        rockTexture = parts[i + 1]
+        i++
+      } else if (parts[i] === 'heightmap' && i + 1 < parts.length) {
+        const index = parseInt(parts[i + 1])
+        if (!isNaN(index) && index >= 1 && index <= 5) {
+          heightmapIndex = index
+        }
+        i++
+      }
+    }
+  }
+
+  // Parse position
+  const atIndex = parts.indexOf('at')
+  if (atIndex !== -1 && atIndex + 3 < parts.length) {
+    const x = parseFloat(parts[atIndex + 1])
+    const y = parseFloat(parts[atIndex + 2])
+    const z = parseFloat(parts[atIndex + 3])
+    if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+      position = [x, y, z]
+    }
+  }
+
+  // Create terrain object
+  const newId = crypto.randomUUID()
+  const newName = `terrain${objectCounter}`
+
+  const newObject = {
+    id: newId,
+    name: newName,
+    position: position || [0, 0, 0],
+    geometry: 'terrain',
+    variant,
+    heightmapIndex,
+    grassTexture,
+    mudTexture,
+    rockTexture,
+    scale: [1, 1, 1],
+    rotation: [0, 0, 0],
+    type: 'terrain'
+  }
+
+  setObjects([...objects, newObject])
+  setObjectCounter(objectCounter + 1)
+
+  // Create success message
+  let message = `Created ${variant} terrain with heightmap ${heightmapIndex}`
+  message += ` (grass: ${grassTexture}, mud: ${mudTexture}, rock: ${rockTexture})`
+  message += ` at position [${newObject.position.join(', ')}]`
+
+  setLastAction(message)
+
+  // Auto-select the new terrain
+  clearSelection()
+  selectObject(newName)
 }
 
 // Handle basic object creation (cube, sphere, etc.)
 const handleCreateBasicObject = (parts) => {
   const { addObject } = useSceneStore.getState()
   const { setLastAction, clearSelection, selectObject } = useSelectionStore.getState()
-  
+
   const objectType = parts[1]
   let color = '#4a90e2'
   let position = null
-  
+
   // Parse color and position
   let i = 2
   while (i < parts.length) {
@@ -129,15 +227,18 @@ const handleCreateBasicObject = (parts) => {
         position = [x, y, z]
       }
       break
-    } else if (parts[i].startsWith('#') || ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'cyan'].includes(parts[i])) {
+    } else if (
+      parts[i].startsWith('#') ||
+      ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'cyan'].includes(parts[i])
+    ) {
       color = parts[i]
     }
     i++
   }
-  
+
   const newObject = addObject(objectType, color, position)
   setLastAction(`Created ${newObject.name} at position [${newObject.position.join(', ')}]`)
-  
+
   // Auto-select the new object
   clearSelection()
   selectObject(newObject.name)
@@ -149,10 +250,10 @@ const handleCreateModelCommand = async (parts) => {
     useSelectionStore.getState().setLastAction('Create model command requires a model type')
     return
   }
-  
+
   const searchTerm = parts[2]
   let position = [0, 0, 0]
-  
+
   // Parse position if provided
   const atIndex = parts.indexOf('at')
   if (atIndex !== -1 && atIndex + 3 < parts.length) {
@@ -163,32 +264,38 @@ const handleCreateModelCommand = async (parts) => {
       position = [x, y, z]
     }
   }
-  
+
   try {
     const { setLastAction } = useSelectionStore.getState()
-    const { setShowModelSearch, setModelSearchResults, setPendingModelPosition, setIsModelSearchLoading } = useModelSearchStore.getState()
-    
+    const {
+      setShowModelSearch,
+      setModelSearchResults,
+      setPendingModelPosition,
+      setIsModelSearchLoading
+    } = useModelSearchStore.getState()
+
     // Start model search loading
     setIsModelSearchLoading(true)
     setLastAction(`Searching for ${searchTerm} models...`)
-    
+
     // Search for models
     const searchResults = await modelSearch.searchModels(searchTerm)
-    
+
     if (!searchResults || !searchResults.models || searchResults.models.length === 0) {
       setLastAction(`No models found for: ${searchTerm}`)
       setIsModelSearchLoading(false)
       return
     }
-    
+
     // Show search results for user to choose from
     setModelSearchResults(searchResults)
     setPendingModelPosition(position)
     setShowModelSearch(true)
     setIsModelSearchLoading(false)
-    
-    setLastAction(`Found ${searchResults.models.length} models for "${searchTerm}". Select one to place at position [${position.join(', ')}].`)
-    
+
+    setLastAction(
+      `Found ${searchResults.models.length} models for "${searchTerm}". Select one to place at position [${position.join(', ')}].`
+    )
   } catch (error) {
     console.error('Model search error:', error)
     useSelectionStore.getState().setLastAction(`Failed to search for models: ${error.message}`)
@@ -200,11 +307,11 @@ const handleCreateModelCommand = async (parts) => {
 export const createModelObject = (modelData, position) => {
   const { addObject, objectCounter } = useSceneStore.getState()
   const { clearSelection, selectObject, setLastAction } = useSelectionStore.getState()
-  
+
   console.log('Creating model object with data:', modelData)
   const newId = crypto.randomUUID()
   const newName = `${modelData.name.replace(/\s+/g, '_').toLowerCase()}${objectCounter}`
-  
+
   const newObject = {
     id: newId,
     name: newName,
@@ -221,34 +328,36 @@ export const createModelObject = (modelData, position) => {
     rotation: [0, 0, 0],
     type: 'model' // Mark as 3D model for special handling
   }
-  
+
   // Use the scene store's addObject method but pass the complete object
   const { objects, setObjects, setObjectCounter } = useSceneStore.getState()
   setObjects([...objects, newObject])
   setObjectCounter(objectCounter + 1)
-  
+
   setLastAction(`Created 3D model: ${newName} at position [${position.join(', ')}]`)
-  
+
   // Auto-select the new model
   clearSelection()
   selectObject(newName)
-  
+
   return newObject
 }
 
 // Handle clone/duplicate commands
 const handleCloneCommand = (parts) => {
-  const { objects, addObject, objectCounter, setObjects, setObjectCounter } = useSceneStore.getState()
-  const { selectedObjects, clearSelection, selectObject, setLastAction } = useSelectionStore.getState()
-  
+  const { objects, addObject, objectCounter, setObjects, setObjectCounter } =
+    useSceneStore.getState()
+  const { selectedObjects, clearSelection, selectObject, setLastAction } =
+    useSelectionStore.getState()
+
   if (selectedObjects.size === 0) {
     setLastAction('No objects selected to clone')
     return
   }
-  
+
   // Parse position if provided
   let position = null
-  const atIndex = parts.findIndex(p => p.toLowerCase() === 'at')
+  const atIndex = parts.findIndex((p) => p.toLowerCase() === 'at')
   if (atIndex !== -1 && atIndex + 3 < parts.length) {
     const x = parseFloat(parts[atIndex + 1])
     const y = parseFloat(parts[atIndex + 2])
@@ -257,20 +366,20 @@ const handleCloneCommand = (parts) => {
       position = [x, y, z]
     }
   }
-  
+
   // If no position specified, offset by 2 units on X axis
   if (!position) {
     position = [2, 0, 0]
   }
-  
+
   const clonedObjects = []
   const newObjects = [...objects]
   let counter = objectCounter
-  
-  selectedObjects.forEach(selectedName => {
-    const originalObject = objects.find(obj => obj.name === selectedName)
+
+  selectedObjects.forEach((selectedName) => {
+    const originalObject = objects.find((obj) => obj.name === selectedName)
     if (!originalObject) return
-    
+
     // Create a deep copy of the object
     const clonedObject = {
       ...originalObject,
@@ -285,24 +394,24 @@ const handleCloneCommand = (parts) => {
       scale: [...originalObject.scale],
       rotation: [...originalObject.rotation]
     }
-    
+
     // If it's a model, deep copy modelData
     if (originalObject.modelData) {
       clonedObject.modelData = { ...originalObject.modelData }
     }
-    
+
     newObjects.push(clonedObject)
     clonedObjects.push(clonedObject.name)
     counter++
   })
-  
+
   setObjects(newObjects)
   setObjectCounter(counter)
-  
+
   // Select the cloned objects
   clearSelection()
-  clonedObjects.forEach(name => selectObject(name))
-  
+  clonedObjects.forEach((name) => selectObject(name))
+
   setLastAction(`Cloned ${clonedObjects.length} object(s): ${clonedObjects.join(', ')}`)
 }
 
@@ -310,15 +419,15 @@ const handleCloneCommand = (parts) => {
 const handleSelectCommand = (parts) => {
   const { objects } = useSceneStore.getState()
   const { setSelectedObjects, setLastAction } = useSelectionStore.getState()
-  
+
   if (parts.length < 2) {
     setLastAction('Select command requires a target')
     return
   }
-  
+
   const target = parts[1].toLowerCase()
-  const objectNames = objects.map(obj => obj.name)
-  
+  const objectNames = objects.map((obj) => obj.name)
+
   if (target === 'all') {
     setSelectedObjects(new Set(objectNames))
     setLastAction(`Selected all ${objectNames.length} objects`)
@@ -349,36 +458,36 @@ const handleSelectCommand = (parts) => {
 const handleDeleteCommand = (parts) => {
   const { objects, removeObject } = useSceneStore.getState()
   const { selectedObjects, setSelectedObjects, setLastAction } = useSelectionStore.getState()
-  
+
   if (parts.length < 2) {
     setLastAction('Delete command requires a target')
     return
   }
-  
+
   const target = parts[1]
-  
+
   if (target === 'selected') {
     if (selectedObjects.size === 0) {
       setLastAction('No objects selected to delete')
       return
     }
-    
+
     const deletedObjects = []
-    selectedObjects.forEach(name => {
+    selectedObjects.forEach((name) => {
       if (removeObject(name)) {
         deletedObjects.push(name)
       }
     })
-    
+
     setSelectedObjects(new Set())
     setLastAction(`Deleted ${deletedObjects.length} objects: ${deletedObjects.join(', ')}`)
   } else {
-    const objectExists = objects.some(obj => obj.name === target)
+    const objectExists = objects.some((obj) => obj.name === target)
     if (!objectExists) {
       setLastAction(`Object not found: ${target}`)
       return
     }
-    
+
     if (removeObject(target)) {
       // Remove from selection if it was selected
       const newSelection = new Set(selectedObjects)
@@ -393,7 +502,7 @@ const handleDeleteCommand = (parts) => {
 const handleScaleCommand = (parts) => {
   const { objects, updateObject } = useSceneStore.getState()
   const { selectedObjects, setLastAction } = useSelectionStore.getState()
-  
+
   if (parts.length >= 3) {
     const target = parts[1]
     const scaleValues = parts
@@ -443,7 +552,11 @@ const handleScaleCommand = (parts) => {
       }
 
       updateObject(targetObject.name, {
-        scale: [targetObject.scale[0] * scaleX, targetObject.scale[1] * scaleY, targetObject.scale[2] * scaleZ]
+        scale: [
+          targetObject.scale[0] * scaleX,
+          targetObject.scale[1] * scaleY,
+          targetObject.scale[2] * scaleZ
+        ]
       })
 
       setLastAction(
@@ -461,7 +574,7 @@ const handleScaleCommand = (parts) => {
 const handleRotateCommand = (parts) => {
   const { objects, updateObject } = useSceneStore.getState()
   const { selectedObjects, setLastAction } = useSelectionStore.getState()
-  
+
   if (parts.length >= 3) {
     const target = parts[1]
     const rotationValues = parts
@@ -519,7 +632,11 @@ const handleRotateCommand = (parts) => {
       }
 
       updateObject(targetObject.name, {
-        rotation: [targetObject.rotation[0] + rotX, targetObject.rotation[1] + rotY, targetObject.rotation[2] + rotZ]
+        rotation: [
+          targetObject.rotation[0] + rotX,
+          targetObject.rotation[1] + rotY,
+          targetObject.rotation[2] + rotZ
+        ]
       })
 
       const rotationDesc =
@@ -539,7 +656,7 @@ const handleRotateCommand = (parts) => {
 const handleMoveCommand = (parts) => {
   const { objects, updateObject } = useSceneStore.getState()
   const { selectedObjects, setLastAction } = useSelectionStore.getState()
-  
+
   if (parts.length >= 5) {
     const target = parts[1]
     const moveType = parts[2] // 'to' or 'by'
@@ -567,7 +684,7 @@ const handleMoveCommand = (parts) => {
           const newPosition = isAbsolute
             ? [moveX, moveY, moveZ]
             : [obj.position[0] + moveX, obj.position[1] + moveY, obj.position[2] + moveZ]
-          
+
           updateObject(obj.name, { position: newPosition })
         }
       })
@@ -586,7 +703,11 @@ const handleMoveCommand = (parts) => {
 
       const newPosition = isAbsolute
         ? [moveX, moveY, moveZ]
-        : [targetObject.position[0] + moveX, targetObject.position[1] + moveY, targetObject.position[2] + moveZ]
+        : [
+            targetObject.position[0] + moveX,
+            targetObject.position[1] + moveY,
+            targetObject.position[2] + moveZ
+          ]
 
       updateObject(targetObject.name, { position: newPosition })
 
@@ -602,6 +723,126 @@ const handleMoveCommand = (parts) => {
   }
 }
 
+// Handle change texture command
+const handleChangeCommand = (parts) => {
+  const { objects, updateObject } = useSceneStore.getState()
+  const { selectedObjects, setLastAction } = useSelectionStore.getState()
+
+  // Command format: change texture <type> <index|next|prev>
+  // Example: change texture grass 2, change texture heightmap 3, change texture rock next
+  if (parts.length < 3) {
+    setLastAction('Change command requires type (e.g., "change texture grass 2")')
+    return
+  }
+
+  // Check if this is a texture change command
+  if (parts[1] !== 'texture') {
+    setLastAction('Only texture changes are supported (e.g., "change texture grass 2")')
+    return
+  }
+
+  if (parts.length < 4) {
+    setLastAction('Texture change requires type and value (e.g., "change texture grass 2")')
+    return
+  }
+
+  const textureType = parts[2].toLowerCase() // grass, mud, rock, heightmap
+  const value = parts[3].toLowerCase() // index number, "next", or "prev"
+
+  // Validate texture type
+  if (!['grass', 'mud', 'rock', 'heightmap'].includes(textureType)) {
+    setLastAction(`Invalid texture type: ${textureType}. Use grass, mud, rock, or heightmap`)
+    return
+  }
+
+  // Check if any terrain objects are selected
+  const selectedTerrains = objects.filter(
+    (obj) => selectedObjects.has(obj.name) && obj.geometry === 'terrain'
+  )
+
+  if (selectedTerrains.length === 0) {
+    setLastAction('No terrain objects selected. Select a terrain first.')
+    return
+  }
+
+  // Import texture helper functions
+  const {
+    getTextureCount,
+    getTextureByIndex,
+    getTextureIndexByKey
+  } = require('../components/3d/Terrain.jsx')
+
+  // Process each selected terrain
+  selectedTerrains.forEach((terrain) => {
+    let newIndex
+
+    if (textureType === 'heightmap') {
+      // Handle heightmap changes (1-5)
+      const currentIndex = terrain.heightmapIndex || 1
+
+      if (value === 'next') {
+        newIndex = currentIndex < 5 ? currentIndex + 1 : 1
+      } else if (value === 'prev' || value === 'previous') {
+        newIndex = currentIndex > 1 ? currentIndex - 1 : 5
+      } else {
+        newIndex = parseInt(value)
+        if (isNaN(newIndex) || newIndex < 1 || newIndex > 5) {
+          setLastAction('Heightmap index must be between 1 and 5')
+          return
+        }
+      }
+
+      updateObject(terrain.name, { heightmapIndex: newIndex })
+      console.log(`[CommandHandler] Changed ${terrain.name} heightmap to ${newIndex}`)
+    } else {
+      // Handle grass, mud, rock texture changes
+      const textureCount = getTextureCount(textureType)
+
+      if (textureCount === 0) {
+        setLastAction(`No ${textureType} textures available`)
+        return
+      }
+
+      // Get current texture key
+      const currentTextureKey = terrain[`${textureType}Texture`]
+      const currentIndex = currentTextureKey
+        ? getTextureIndexByKey(textureType, currentTextureKey)
+        : 1
+
+      if (value === 'next') {
+        newIndex = currentIndex < textureCount ? currentIndex + 1 : 1
+      } else if (value === 'prev' || value === 'previous') {
+        newIndex = currentIndex > 1 ? currentIndex - 1 : textureCount
+      } else {
+        newIndex = parseInt(value)
+        if (isNaN(newIndex) || newIndex < 1 || newIndex > textureCount) {
+          setLastAction(`${textureType} texture index must be between 1 and ${textureCount}`)
+          return
+        }
+      }
+
+      // Get texture key by index
+      const newTextureKey = getTextureByIndex(textureType, newIndex)
+
+      if (!newTextureKey) {
+        setLastAction(`Failed to get ${textureType} texture at index ${newIndex}`)
+        return
+      }
+
+      // Update the terrain object
+      const updateKey = `${textureType}Texture`
+      updateObject(terrain.name, { [updateKey]: newTextureKey })
+      console.log(
+        `[CommandHandler] Changed ${terrain.name} ${textureType} texture to ${newTextureKey} (index ${newIndex})`
+      )
+    }
+  })
+
+  // Set success message
+  const terrainNames = selectedTerrains.map((t) => t.name).join(', ')
+  setLastAction(`Changed ${textureType} texture on ${terrainNames}`)
+}
+
 // Handle clear command
 const handleClearCommand = () => {
   const { clearSelection } = useSelectionStore.getState()
@@ -613,7 +854,7 @@ const handleResetCommand = () => {
   const { resetScene } = useSceneStore.getState()
   const { clearSelection, setLastAction } = useSelectionStore.getState()
   const { clearModelSearch } = useModelSearchStore.getState()
-  
+
   resetScene()
   clearSelection()
   clearModelSearch()

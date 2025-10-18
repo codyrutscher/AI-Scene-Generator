@@ -139,7 +139,22 @@ export class JSONExportService {
           scale: obj.scale || [1, 1, 1],
           rotation: obj.rotation || [0, 0, 0],
           color: obj.color || '#4a90e2',
-          visible: obj.visible !== false // Default to true
+          visible: obj.visible !== false, // Default to true
+          // Preserve terrain-specific properties
+          ...(obj.geometry === 'terrain' && {
+            preset: obj.preset || 'flat',
+            displacementScale: obj.displacementScale || 1,
+            displacementOffset: obj.displacementOffset || 0,
+            widthScale: obj.widthScale || 20,
+            heightScale: obj.heightScale || 20,
+            segments: obj.segments || 64,
+            textureRepeat: obj.textureRepeat || 10,
+            seed: obj.seed || 0
+          }),
+          // Preserve model-specific properties
+          ...(obj.geometry === 'model' && {
+            modelData: obj.modelData || {}
+          })
         })),
         camera: data.scene.camera,
         lighting: data.scene.lighting,
@@ -165,14 +180,16 @@ export class JSONExportService {
       
       const objectTypes = {};
       data.scene.objects.forEach(obj => {
-        objectTypes[obj.geometry] = (objectTypes[obj.geometry] || 0) + 1;
+        const displayType = obj.geometry === 'terrain' ? `terrain (${obj.preset || 'flat'})` : obj.geometry;
+        objectTypes[displayType] = (objectTypes[displayType] || 0) + 1;
       });
 
       return {
         objectCount: data.scene.objects.length,
-        objectTypes,
+        objectTypes: Object.keys(objectTypes).map(type => `${type} (${objectTypes[type]})`),
         hasCamera: !!data.scene.camera,
         hasLighting: !!data.scene.lighting,
+        appVersion: data.metadata?.appVersion || 'Unknown',
         fileSize: this.formatFileSize(file.size)
       };
     } catch (error) {

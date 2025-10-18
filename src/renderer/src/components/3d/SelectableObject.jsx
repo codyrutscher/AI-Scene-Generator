@@ -2,6 +2,7 @@
 import { useRef } from 'react'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+import Terrain from './Terrain'
 
 // Simple object component with selection handling
 export default function SelectableObject({
@@ -14,7 +15,8 @@ export default function SelectableObject({
   onSelect,
   scale = [1, 1, 1],
   rotation = [0, 0, 0],
-  modelData // For 3D models
+  modelData, // For 3D models
+  terrainProps // For terrain-specific properties
 }) {
   const meshRef = useRef(null)
 
@@ -25,19 +27,20 @@ export default function SelectableObject({
   }
 
   // Load 3D model using Drei's useGLTF hook for better performance and caching
-  const gltf = geometry === 'model' && modelData?.url ? useGLTF(modelData.url) : null
-  
+  const modelUrl = geometry === 'model' ? modelData?.modelData?.url || modelData?.url : null
+  const gltf = modelUrl ? useGLTF(modelUrl) : null
+
   // Create centered model with simple wireframe selection
   const createCenteredModel = () => {
     if (!gltf || !gltf.scene) return { scene: null, outlineScene: null }
-    
+
     const clonedScene = gltf.scene.clone()
-    
+
     // Calculate bounding box and center the model
     const box = new THREE.Box3().setFromObject(clonedScene)
     const center = box.getCenter(new THREE.Vector3())
     clonedScene.position.sub(center)
-    
+
     // Create simple wireframe outline for selection
     let outlineScene = null
     if (isSelected) {
@@ -53,7 +56,7 @@ export default function SelectableObject({
         }
       })
     }
-    
+
     return { scene: clonedScene, outlineScene }
   }
 
@@ -72,11 +75,40 @@ export default function SelectableObject({
     return <boxGeometry args={[1, 1, 1]} />
   }
 
+  // Render terrain
+  if (geometry === 'terrain') {
+    // Debug: Log all terrain-related props
+    console.log(`[SelectableObject ${name}] Rendering terrain with:`, {
+      terrainProps,
+      modelData,
+      variant: terrainProps?.variant || modelData?.variant || 'heightmap1',
+      heightmapIndex: terrainProps?.heightmapIndex || modelData?.heightmapIndex || 1
+    })
+
+    // For terrain objects, pass variant and texture customization props
+    return (
+      <Terrain
+        ref={meshRef}
+        name={name}
+        position={position}
+        scale={scale}
+        rotation={rotation}
+        isSelected={isSelected}
+        onSelect={onSelect}
+        variant={terrainProps?.variant || modelData?.variant || 'heightmap1'}
+        heightmapIndex={terrainProps?.heightmapIndex || modelData?.heightmapIndex || 1}
+        grassTexture={terrainProps?.grassTexture || modelData?.grassTexture}
+        mudTexture={terrainProps?.mudTexture || modelData?.mudTexture}
+        rockTexture={terrainProps?.rockTexture || modelData?.rockTexture}
+      />
+    )
+  }
+
   // Render 3D model
   if (geometry === 'model') {
-    const modelData = createCenteredModel()
-    
-    if (!modelData.scene) {
+    const centeredModel = createCenteredModel()
+
+    if (!centeredModel.scene) {
       // Fallback to a box if model fails to load or is loading
       return (
         <mesh
@@ -87,11 +119,7 @@ export default function SelectableObject({
           onClick={handleClick}
         >
           <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial
-            color="#ff0000"
-            transparent
-            opacity={0.5}
-          />
+          <meshStandardMaterial color="#ff0000" transparent opacity={0.5} />
         </mesh>
       )
     }
@@ -104,11 +132,11 @@ export default function SelectableObject({
         rotation={rotation}
         onClick={handleClick}
       >
-        <primitive object={modelData.scene} />
+        <primitive object={centeredModel.scene} />
         {/* Simple wireframe selection outline */}
-        {isSelected && modelData.outlineScene && (
+        {isSelected && centeredModel.outlineScene && (
           <group scale={[1.01, 1.01, 1.01]}>
-            <primitive object={modelData.outlineScene} />
+            <primitive object={centeredModel.outlineScene} />
           </group>
         )}
       </group>
@@ -126,21 +154,14 @@ export default function SelectableObject({
       {/* Main object */}
       <mesh>
         {createGeometry()}
-        <meshStandardMaterial
-          color={isSelected ? selectedColor : color}
-        />
+        <meshStandardMaterial color={isSelected ? selectedColor : color} />
       </mesh>
-      
+
       {/* Simple wireframe selection outline */}
       {isSelected && (
         <mesh scale={[1.02, 1.02, 1.02]}>
           {createGeometry()}
-          <meshBasicMaterial 
-            color={selectedColor}
-            wireframe 
-            transparent 
-            opacity={0.6}
-          />
+          <meshBasicMaterial color={selectedColor} wireframe transparent opacity={0.6} />
         </mesh>
       )}
     </group>

@@ -59,17 +59,25 @@ export const useSceneStore = create()(
       },
       
       updateObject: (name, updates) => {
+        console.log(`[SceneStore] updateObject called for ${name} with:`, updates);
+        
         const { objects } = get()
         const objectExists = objects.some(obj => obj.name === name)
         
         if (!objectExists) {
+          console.log(`[SceneStore] Object ${name} not found`);
           return false
         }
         
         set((state) => ({
-          objects: state.objects.map(obj => 
-            obj.name === name ? { ...obj, ...updates } : obj
-          )
+          objects: state.objects.map(obj => {
+            if (obj.name === name) {
+              const updatedObj = { ...obj, ...updates };
+              console.log(`[SceneStore] Updated object ${name}:`, updatedObj);
+              return updatedObj;
+            }
+            return obj;
+          })
         }))
         
         return true
