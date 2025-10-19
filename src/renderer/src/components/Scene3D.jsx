@@ -18,8 +18,7 @@ import ImportDialog from './dialogs/ImportDialog'
 import { useSceneStore } from '../stores/sceneStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { useModelSearchStore } from '../stores/modelSearchStore'
-import { createModelObject, handleCommand } from '../utils/commandHandlerZustand'
-
+import { createModelObject, handleCommand } from '../utils/commandHandlerZustand' 
 // Main component
 export default function Scene3D() {
   // Use Zustand stores for state management
@@ -124,6 +123,7 @@ export default function Scene3D() {
           onSceneRef={handleSceneRef}
         />
         {/* <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} /> */}
+     
       </Canvas>
 
       {/* Export/Import Buttons */}

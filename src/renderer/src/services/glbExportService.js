@@ -71,11 +71,18 @@ export class GLBExportService {
     const unsupportedFeatures = [];
     let meshCount = 0;
     let totalVertices = 0;
+    let terrainCount = 0;
 
     scene.traverse((object) => {
       // Count meshes and vertices
       if (object instanceof THREE.Mesh) {
         meshCount++;
+        
+        // Check if this is a terrain object (by checking for terrain-specific properties)
+        if (object.userData && object.userData.isTerrainMesh) {
+          terrainCount++;
+        }
+        
         if (object.geometry) {
           const positionAttribute = object.geometry.attributes.position;
           if (positionAttribute) {
@@ -117,6 +124,11 @@ export class GLBExportService {
 
     if (totalVertices > 1000000) {
       warnings.push(`High total vertex count (${totalVertices.toLocaleString()}) may slow export`);
+    }
+
+    // Terrain-specific warnings
+    if (terrainCount > 0) {
+      warnings.push(`${terrainCount} terrain object(s) will be exported as static meshes (procedural generation will be lost)`);
     }
 
     // Check for lights (limited support in GLTF)

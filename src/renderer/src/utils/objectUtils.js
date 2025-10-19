@@ -74,7 +74,7 @@ export const parsePositionFromCommand = (parts) => {
 
 // Validate geometry type
 export const isValidGeometry = (geometry) => {
-  const validGeometries = ['box', 'cube', 'sphere', 'cylinder']
+  const validGeometries = ['box', 'cube', 'sphere', 'cylinder', 'terrain', 'model']
   return validGeometries.includes(geometry)
 }
 
@@ -159,7 +159,8 @@ export const transformObjectRotation = (currentRotation, rotationValues) => {
   ]
 }
 
-// Initial objects data - empty scene
+// Initial objects data - start with empty scene
+// Get initial objects for the scene
 export const getInitialObjects = () => {
   return []
 }
