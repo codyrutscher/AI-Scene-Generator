@@ -172,7 +172,7 @@ const Terrain = forwardRef(
 
       const urls = [grassUrl, mudUrl, rockUrl, heightmapUrl]
       return urls
-    }, [resolvedGrassTexture, resolvedMudTexture, resolvedRockTexture, heightmapKey, name])
+    }, [resolvedGrassTexture, resolvedMudTexture, resolvedRockTexture, heightmapKey, name, grassTexture, mudTexture, rockTexture])
 
     const loadedTextures = useTexture(textureUrls)
 
@@ -206,6 +206,14 @@ const Terrain = forwardRef(
       const [grassTex, mudTex, rockTex, heightmapTex] = loadedTextures
 
       console.log(`[Terrain ${name}] Creating material with heightmapIndex: ${heightmapIndex}`)
+      console.log(`[Terrain ${name}] Material recreation triggered by texture change:`, {
+        grassTexture: grassTexture,
+        mudTexture: mudTexture,
+        rockTexture: rockTexture,
+        resolvedGrassTexture: resolvedGrassTexture,
+        resolvedMudTexture: resolvedMudTexture,
+        resolvedRockTexture: resolvedRockTexture
+      })
 
       return new ShaderMaterial({
         uniforms: {
@@ -281,7 +289,7 @@ const Terrain = forwardRef(
           }
         `
       })
-    }, [variantConfig, loadedTextures, heightmapIndex, name])
+    }, [variantConfig, loadedTextures, heightmapIndex, name, grassTexture, mudTexture, rockTexture])
 
     // Cleanup geometry on unmount
     useEffect(() => {

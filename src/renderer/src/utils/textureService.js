@@ -3,9 +3,8 @@
  * Fetches textures based on category from the provided API endpoint
  */
 
-// API Configuration
-const API_BASE_URL = 'http://localhost:5173/api/textures'
-// const API_BASE_URL = 'https://3-dai-app.vercel.app/api/textures';
+// API Configuration 
+const API_BASE_URL = 'https://3-dai-app.vercel.app/api/textures';
 
 /**
  * Transform API texture data to a simpler format

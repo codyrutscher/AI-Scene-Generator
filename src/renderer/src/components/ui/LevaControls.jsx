@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from 'react'
+import { useEffect, useMemo, useCallback, useState } from 'react'
 import { useControls } from 'leva'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
@@ -10,8 +10,17 @@ import {
   getTextureIndexByKey,
   getTextureKeys
 } from '../3d/Terrain'
+import { textureService } from '../../utils/textureService'
 
 export default function LevaControls() {
+  // API texture state management
+  const [apiTextures, setApiTextures] = useState({
+    grass: [],
+    mud: [],
+    rock: []
+  })
+  const [texturesLoading, setTexturesLoading] = useState(false)
+
   // Get store functions with selective subscriptions for performance
   const updateObject = useSceneStore((state) => state.updateObject)
   const objects = useSceneStore((state) => state.objects)
@@ -29,6 +38,45 @@ export default function LevaControls() {
 
   // Get the first selected object for controls (multi-selection uses first object as reference)
   const primaryObject = selectedObjectsData[0]
+
+  // Fetch API textures for terrain controls
+  const getAvailableTextures = useCallback(async () => {
+    if (texturesLoading) return
+
+    setTexturesLoading(true)
+    try {
+      console.log('[LevaControls] Fetching API textures...')
+      
+      // Fetch textures for all categories in parallel
+      const [grassResult, mudResult, rockResult] = await Promise.all([
+        textureService.fetchTexturesByCategory('grass', { limit: 20 }),
+        textureService.fetchTexturesByCategory('mud', { limit: 20 }),
+        textureService.fetchTexturesByCategory('rock', { limit: 20 })
+      ])
+
+      setApiTextures({
+        grass: grassResult.textures || [],
+        mud: mudResult.textures || [],
+        rock: rockResult.textures || []
+      })
+
+      console.log('[LevaControls] API textures loaded:', {
+        grass: grassResult.textures?.length || 0,
+        mud: mudResult.textures?.length || 0,
+        rock: rockResult.textures?.length || 0
+      })
+    } catch (error) {
+      console.error('[LevaControls] Error fetching API textures:', error)
+      setApiTextures({ grass: [], mud: [], rock: [] })
+    } finally {
+      setTexturesLoading(false)
+    }
+  }, [texturesLoading])
+
+  // Load API textures on component mount
+  useEffect(() => {
+    getAvailableTextures()
+  }, [])
 
   // Simple transform change handler - updates objects immediately
   const handleTransformChange = useCallback(
@@ -203,85 +251,102 @@ export default function LevaControls() {
       // Add texture controls for heightmap terrains
       const currentVariant = TERRAIN_VARIANTS[primaryObject.variant || 'heightmap1']
       if (currentVariant && currentVariant.type === 'heightmap') {
-        // Get texture counts for dynamic slider ranges
-        const grassCount = getTextureCount('grass')
-        const mudCount = getTextureCount('mud')
-        const rockCount = getTextureCount('rock')
+        // API Texture Dropdowns
+        if (apiTextures.grass.length > 0) {
+          // Create options object for grass textures with keys that match Terrain component
+          const grassOptions = apiTextures.grass.reduce((acc, texture, index) => {
+            // Create a clean key from the texture name (same logic as in Terrain.jsx)
+            const key = texture.name
+              .toLowerCase()
+              .replace(/\s+/g, '_')
+              .replace(/[^a-z0-9_]/g, '')
+              .replace(/_texture$/i, '')
+              .replace(/^grass_/i, '')
+            const finalKey = key || `grass${index + 1}`
+            acc[texture.name] = finalKey // Display name -> key mapping
+            return acc
+          }, {})
 
-        // Get current texture indices (1-based)
-        // If texture is undefined, use first available texture
-        const currentGrassTexture = primaryObject.grassTexture || grassKeys[0]
-        const currentMudTexture = primaryObject.mudTexture || mudKeys[0]
-        const currentRockTexture = primaryObject.rockTexture || rockKeys[0]
+          // Get current texture key from the first available if not set
+          const currentGrassKey = primaryObject.grassTexture || Object.values(grassOptions)[0] || ''
 
-        const currentGrassIndex = getTextureIndexByKey('grass', currentGrassTexture)
-        const currentMudIndex = getTextureIndexByKey('mud', currentMudTexture)
-        const currentRockIndex = getTextureIndexByKey('rock', currentRockTexture)
-
-        // Get texture keys for display
-        const grassKeys = getTextureKeys('grass')
-        const mudKeys = getTextureKeys('mud')
-        const rockKeys = getTextureKeys('rock')
-
-        // Helper to format texture name for display
-        const formatTextureName = (key) => {
-          return key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
-        }
-
-        // Grass texture slider
-        if (grassCount > 0) {
-          const currentGrassKey = grassKeys[currentGrassIndex - 1] || grassKeys[0]
-          baseControls.grassTextureIndex = {
-            value: currentGrassIndex,
-            min: 1,
-            max: grassCount,
-            step: 1,
-            label: `Grass (${formatTextureName(currentGrassKey)})`,
+          baseControls.grassTexture = {
+            value: currentGrassKey,
+            options: grassOptions,
+            label: 'Grass Texture',
             onChange: (value) => {
-              const textureKey = getTextureByIndex('grass', value)
-              if (textureKey) {
-                console.log(`[LevaControls] Grass texture changed to index ${value}: ${textureKey}`)
-                handleTransformChange({ grassTexture: textureKey })
-              }
+              console.log(`[LevaControls] Grass texture changed to key: ${value}`)
+              handleTransformChange({ grassTexture: value })
             }
           }
         }
 
-        // Mud texture slider
-        if (mudCount > 0) {
-          const currentMudKey = mudKeys[currentMudIndex - 1] || mudKeys[0]
-          baseControls.mudTextureIndex = {
-            value: currentMudIndex,
-            min: 1,
-            max: mudCount,
-            step: 1,
-            label: `Mud (${formatTextureName(currentMudKey)})`,
+        if (apiTextures.mud.length > 0) {
+          // Create options object for mud textures with keys that match Terrain component
+          const mudOptions = apiTextures.mud.reduce((acc, texture, index) => {
+            // Create a clean key from the texture name (same logic as in Terrain.jsx)
+            const key = texture.name
+              .toLowerCase()
+              .replace(/\s+/g, '_')
+              .replace(/[^a-z0-9_]/g, '')
+              .replace(/_texture$/i, '')
+              .replace(/^mud_/i, '')
+            const finalKey = key || `mud${index + 1}`
+            acc[texture.name] = finalKey // Display name -> key mapping
+            return acc
+          }, {})
+
+          // Get current texture key from the first available if not set
+          const currentMudKey = primaryObject.mudTexture || Object.values(mudOptions)[0] || ''
+
+          baseControls.mudTexture = {
+            value: currentMudKey,
+            options: mudOptions,
+            label: 'Mud Texture',
             onChange: (value) => {
-              const textureKey = getTextureByIndex('mud', value)
-              if (textureKey) {
-                console.log(`[LevaControls] Mud texture changed to index ${value}: ${textureKey}`)
-                handleTransformChange({ mudTexture: textureKey })
-              }
+              console.log(`[LevaControls] Mud texture changed to key: ${value}`)
+              handleTransformChange({ mudTexture: value })
             }
           }
         }
 
-        // Rock texture slider
-        if (rockCount > 0) {
-          const currentRockKey = rockKeys[currentRockIndex - 1] || rockKeys[0]
-          baseControls.rockTextureIndex = {
-            value: currentRockIndex,
-            min: 1,
-            max: rockCount,
-            step: 1,
-            label: `Rock (${formatTextureName(currentRockKey)})`,
+        if (apiTextures.rock.length > 0) {
+          // Create options object for rock textures with keys that match Terrain component
+          const rockOptions = apiTextures.rock.reduce((acc, texture, index) => {
+            // Create a clean key from the texture name (same logic as in Terrain.jsx)
+            const key = texture.name
+              .toLowerCase()
+              .replace(/\s+/g, '_')
+              .replace(/[^a-z0-9_]/g, '')
+              .replace(/_texture$/i, '')
+              .replace(/^rock_/i, '')
+              .replace(/^stone_/i, '')
+            const finalKey = key || `rock${index + 1}`
+            acc[texture.name] = finalKey // Display name -> key mapping
+            return acc
+          }, {})
+
+          // Get current texture key from the first available if not set
+          const currentRockKey = primaryObject.rockTexture || Object.values(rockOptions)[0] || ''
+
+          baseControls.rockTexture = {
+            value: currentRockKey,
+            options: rockOptions,
+            label: 'Rock Texture',
             onChange: (value) => {
-              const textureKey = getTextureByIndex('rock', value)
-              if (textureKey) {
-                console.log(`[LevaControls] Rock texture changed to index ${value}: ${textureKey}`)
-                handleTransformChange({ rockTexture: textureKey })
-              }
+              console.log(`[LevaControls] Rock texture changed to key: ${value}`)
+              handleTransformChange({ rockTexture: value })
             }
+          }
+        }
+
+        // Add refresh button for textures
+        baseControls.refreshTextures = {
+          value: false,
+          label: 'Refresh Textures',
+          onChange: () => {
+            console.log('[LevaControls] Refreshing API textures...')
+            getAvailableTextures()
           }
         }
 
@@ -312,10 +377,12 @@ export default function LevaControls() {
     primaryObject?.rockTexture,
     primaryObject?.heightmapIndex,
     selectedObjectsData.length,
-    // Add TEXTURES to dependencies so UI updates when API textures load
-    Object.keys(TEXTURES.grass).length,
-    Object.keys(TEXTURES.mud).length,
-    Object.keys(TEXTURES.rock).length
+    // Add API textures to dependencies so UI updates when API textures load
+    // apiTextures.grass.length,
+    // apiTextures.mud.length,
+    // apiTextures.rock.length,
+    // texturesLoading,
+    // getAvailableTextures
   ])
 
   // Update control values when object transforms change (without recreating controls)

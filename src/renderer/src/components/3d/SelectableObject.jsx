@@ -78,12 +78,7 @@ export default function SelectableObject({
   // Render terrain
   if (geometry === 'terrain') {
     // Debug: Log all terrain-related props
-    console.log(`[SelectableObject ${name}] Rendering terrain with:`, {
-      terrainProps,
-      modelData,
-      variant: terrainProps?.variant || modelData?.variant || 'heightmap1',
-      heightmapIndex: terrainProps?.heightmapIndex || modelData?.heightmapIndex || 1
-    })
+ 
 
     // For terrain objects, pass variant and texture customization props
     return (
